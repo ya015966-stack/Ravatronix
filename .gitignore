@@ -1,0 +1,36 @@
+# Build outputs
+build/
+dist/
+out/
+*.bin
+*.elf
+*.map
+*.hex
+*.uf2
+*.o
+*.a
+
+# Arduino / PlatformIO
+.pio/
+.vscode/
+*.ino.cpp
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+secrets/
+credentials.json
+config.local.*
+
+# Android
+.gradle/
+local.properties
+**/build/
+*.jks
+*.keystore
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
