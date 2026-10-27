@@ -28,10 +28,16 @@ jobs:
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
-      - name: Compile serial test for generic ESP32-S3
+      - name: Show ESP32-S3 board options
+        run: arduino-cli board details --fqbn esp32:esp32:esp32s3
+
+      - name: Compile serial test for ESP32-S3 N16R8 memory configuration
         run: |
           mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 --output-dir build firmware/esp32_s3/serial_test
+          arduino-cli compile --fqbn "esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi" --output-dir build firmware/esp32_s3/serial_test
+          echo "Merged image size:"
+          stat -c '%n %s bytes' build/serial_test.ino.merged.bin
+          test "$(stat -c%s build/serial_test.ino.merged.bin)" -ge 16000000
 
       - name: List build output
         run: ls -lh build
@@ -39,7 +45,7 @@ jobs:
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rava-esp32s3-serial-test
+          name: rava-esp32s3-n16r8-serial-test
           path: |
             build/*.bin
           if-no-files-found: error
