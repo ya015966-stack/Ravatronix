@@ -36,12 +36,23 @@ jobs:
           mkdir -p build
           arduino-cli compile --fqbn "esp32:esp32:esp32s3:FlashMode=dio,FlashSize=16M,PSRAM=opi" --output-dir build firmware/esp32_s3/serial_test
           test -s build/serial_test.ino.merged.bin
-          test "$(stat -c%s build/serial_test.ino.merged.bin)" -ge 16000000
-          cp build/serial_test.ino.merged.bin build/RAVA_ESP32S3_N16R8_DIO_merged.bin
-          echo "Merged DIO image:"
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path("build/serial_test.ino.merged.bin")
+          data = src.read_bytes()
+          end = len(data)
+          while end > 0 and data[end - 1] == 0xFF:
+              end -= 1
+          if end == 0:
+              raise SystemExit("Merged image is empty")
+          out = Path("build/RAVA_ESP32S3_N16R8_DIO_merged.bin")
+          out.write_bytes(data[:end])
+          print(f"Original image: {len(data)} bytes; trimmed image: {end} bytes")
+          PY
+          test -s build/RAVA_ESP32S3_N16R8_DIO_merged.bin
           stat -c '%n %s bytes' build/RAVA_ESP32S3_N16R8_DIO_merged.bin
 
-      - name: Upload single merged DIO image
+      - name: Upload single compact merged DIO image
         uses: actions/upload-artifact@v4
         with:
           name: rava-esp32s3-n16r8-dio-serial-test
