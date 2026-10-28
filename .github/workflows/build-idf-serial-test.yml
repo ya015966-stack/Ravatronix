@@ -13,11 +13,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: espressif/idf:v5.5.5
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Install ESP-IDF toolchain
+        uses: espressif/install-esp-idf-action@v1
+        with:
+          version: "v5.5.5"
 
       - name: Configure ESP32-S3 target
         working-directory: firmware/esp32_s3/idf_serial_test
