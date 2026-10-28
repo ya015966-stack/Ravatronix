@@ -49,13 +49,13 @@ jobs:
           out.write_bytes(data[:end])
           print(f"Original image: {len(data)} bytes; trimmed image: {end} bytes")
           PY
-          test -s build/RAVA_ESP32S3_N16R8_DIO_merged.bin
-          stat -c '%n %s bytes' build/RAVA_ESP32S3_N16R8_DIO_merged.bin
+          test -s build/RAVA_ESP32S3_N16R8_QIO_merged.bin
+          stat -c '%n %s bytes' build/RAVA_ESP32S3_N16R8_QIO_merged.bin
 
       - name: Upload single compact merged QIO image
         uses: actions/upload-artifact@v4
         with:
           name: rava-esp32s3-n16r8-qio-serial-test
-          path: build/RAVA_ESP32S3_N16R8_DIO_merged.bin
+          path: build/RAVA_ESP32S3_N16R8_QIO_merged.bin
           if-no-files-found: error
           retention-days: 14
