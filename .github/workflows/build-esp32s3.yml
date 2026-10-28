@@ -1,4 +1,4 @@
-name: Build RAVA ESP32-S3 DIO serial test
+name: Build RAVA ESP32-S3 QIO serial test
 
 on:
   workflow_dispatch:
@@ -31,10 +31,10 @@ jobs:
       - name: Show ESP32-S3 board options
         run: arduino-cli board details --fqbn esp32:esp32:esp32s3
 
-      - name: Compile DIO serial test for ESP32-S3 N16R8
+      - name: Compile QIO serial test for ESP32-S3 N16R8
         run: |
           mkdir -p build
-          arduino-cli compile --fqbn "esp32:esp32:esp32s3:FlashMode=dio,FlashSize=16M,PSRAM=opi" --output-dir build firmware/esp32_s3/serial_test
+          arduino-cli compile --fqbn "esp32:esp32:esp32s3:FlashMode=qio,FlashSize=16M,PSRAM=opi" --output-dir build firmware/esp32_s3/serial_test
           test -s build/serial_test.ino.merged.bin
           python3 - <<'PY'
           from pathlib import Path
@@ -45,17 +45,17 @@ jobs:
               end -= 1
           if end == 0:
               raise SystemExit("Merged image is empty")
-          out = Path("build/RAVA_ESP32S3_N16R8_DIO_merged.bin")
+          out = Path("build/RAVA_ESP32S3_N16R8_QIO_merged.bin")
           out.write_bytes(data[:end])
           print(f"Original image: {len(data)} bytes; trimmed image: {end} bytes")
           PY
           test -s build/RAVA_ESP32S3_N16R8_DIO_merged.bin
           stat -c '%n %s bytes' build/RAVA_ESP32S3_N16R8_DIO_merged.bin
 
-      - name: Upload single compact merged DIO image
+      - name: Upload single compact merged QIO image
         uses: actions/upload-artifact@v4
         with:
-          name: rava-esp32s3-n16r8-dio-serial-test
+          name: rava-esp32s3-n16r8-qio-serial-test
           path: build/RAVA_ESP32S3_N16R8_DIO_merged.bin
           if-no-files-found: error
           retention-days: 14
