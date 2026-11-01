@@ -1,17 +1,17 @@
-name: Build RAVA ESP32-S3 QIO serial test
+name: Build Ravatronix ESP32-S3 OV3660 camera Wi-Fi
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "firmware/esp32_s3/serial_test/serial_test.ino"
+      - "firmware/esp32_s3/camera_wifi_ap/camera_wifi_ap.ino"
       - ".github/workflows/build-esp32s3.yml"
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-camera:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -23,39 +23,27 @@ jobs:
       - name: Configure Arduino CLI
         run: arduino-cli config init
 
-      - name: Install ESP32 platform
+      - name: Install ESP32 Arduino core
         run: |
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
-      - name: Show ESP32-S3 board options
-        run: arduino-cli board details --fqbn esp32:esp32:esp32s3
-
-      - name: Compile QIO serial test for ESP32-S3 N16R8
+      - name: Compile OV3660 camera and Wi-Fi firmware for ESP32-S3 N16R8
         run: |
           mkdir -p build
-          arduino-cli compile --fqbn "esp32:esp32:esp32s3:FlashMode=qio,FlashSize=16M,PSRAM=opi" --output-dir build firmware/esp32_s3/serial_test
-          test -s build/serial_test.ino.merged.bin
-          python3 - <<'PY'
-          from pathlib import Path
-          src = Path("build/serial_test.ino.merged.bin")
-          data = src.read_bytes()
-          end = len(data)
-          while end > 0 and data[end - 1] == 0xFF:
-              end -= 1
-          if end == 0:
-              raise SystemExit("Merged image is empty")
-          out = Path("build/RAVA_ESP32S3_N16R8_QIO_merged.bin")
-          out.write_bytes(data[:end])
-          print(f"Original image: {len(data)} bytes; trimmed image: {end} bytes")
-          PY
-          test -s build/RAVA_ESP32S3_N16R8_QIO_merged.bin
-          stat -c '%n %s bytes' build/RAVA_ESP32S3_N16R8_QIO_merged.bin
+          arduino-cli compile \
+            --fqbn "esp32:esp32:esp32s3:FlashMode=qio,FlashSize=16M,PSRAM=opi,PartitionScheme=huge_app,CPUFreq=240" \
+            --output-dir build \
+            firmware/esp32_s3/camera_wifi_ap
+          test -s build/camera_wifi_ap.ino.merged.bin
+          cp build/camera_wifi_ap.ino.merged.bin build/Ravatronix_ESP32S3_N16R8_OV3660_WIFI_merged.bin
+          test -s build/Ravatronix_ESP32S3_N16R8_OV3660_WIFI_merged.bin
+          stat -c '%n %s bytes' build/Ravatronix_ESP32S3_N16R8_OV3660_WIFI_merged.bin
 
-      - name: Upload single compact merged QIO image
+      - name: Upload camera firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rava-esp32s3-n16r8-qio-serial-test
-          path: build/RAVA_ESP32S3_N16R8_QIO_merged.bin
+          name: Ravatronix-ESP32S3-N16R8-OV3660-WiFi
+          path: build/Ravatronix_ESP32S3_N16R8_OV3660_WIFI_merged.bin
           if-no-files-found: error
           retention-days: 14
