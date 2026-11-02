@@ -33,7 +33,7 @@ jobs:
       - name: Create merged image for offset 0x0
         working-directory: firmware/esp32_s3/idf_serial_test
         run: |
-          esptool.py --chip esp32s3 merge-bin \
+          esptool.py --chip esp32s3 merge_bin \
             -o build/RAVA_ESP32S3_IDF_QIO_serial_test.bin \
             --flash_mode qio --flash_size 16MB \
             0x0 build/bootloader/bootloader.bin \
