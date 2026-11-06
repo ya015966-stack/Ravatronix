@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "esp_camera.h"
 #include <WiFi.h>
+#include <HTTPClient.h>
 #include "esp_http_server.h"
 #include <Preferences.h>
 #include <cstring>
@@ -30,6 +31,10 @@ static const char *AP_PASSWORD = "RavaCam2026";
 
 static httpd_handle_t camera_httpd = nullptr;
 static const char *STREAM_BOUNDARY = "\r\n--ravaframe\r\n";
+static bool internetTested = false;
+static bool internetOk = false;
+static int lastHttpCode = 0;
+static unsigned long lastInternetCheck = 0;
 
 static bool formValue(const char *body, const char *key, char *out, size_t cap) {
   char needle[24];
@@ -140,9 +145,12 @@ static esp_err_t status_handler(httpd_req_t *req) {
     snprintf(page, sizeof(page),
       "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
       "<body style='font-family:sans-serif;background:#111;color:#eee;padding:24px'>"
-      "<h2>اتصال اینترنت برقرار است</h2><p>Wi-Fi: متصل</p><p>IP: %s</p>"
-      "<p>آدرس دسترسی دوربین از طریق هات‌اسپات: همین IP</p><p><a style='color:#8cf' href='/'>دوربین</a></p></body>",
-      WiFi.localIP().toString().c_str());
+      "<h2>اتصال هات‌اسپات برقرار است</h2><p>Wi-Fi: متصل</p><p>STA IP: %s</p>"
+      "<p>آزمایش اینترنت: %s</p><p>کد پاسخ HTTP: %d</p>"
+      "<p><a style='color:#8cf' href='/status'>تازه‌سازی وضعیت</a> | <a style='color:#8cf' href='/'>دوربین</a></p></body>",
+      WiFi.localIP().toString().c_str(),
+      !internetTested ? "هنوز آزمایش نشده" : (internetOk ? "اینترنت در دسترس است" : "اینترنت در دسترس نیست"),
+      lastHttpCode);
   } else {
     snprintf(page, sizeof(page),
       "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -290,7 +298,31 @@ void loop() {
   if (millis() - lastStatus > 10000) {
     lastStatus = millis();
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.printf("[RAVA] Hotspot connected; STA IP: %s\n", WiFi.localIP().toString().c_str());
+      Serial.printf("[RAVA] Hotspot connected; STA IP: %s\\n", WiFi.localIP().toString().c_str());
+    } else {
+      Serial.printf("[RAVA] Waiting for hotspot; Wi-Fi status: %d\\n", (int)WiFi.status());
+    }
+  }
+
+  // Periodically verify real internet access from the ESP32.
+  if (WiFi.status() == WL_CONNECTED &&
+      (!internetTested || millis() - lastInternetCheck > 60000)) {
+    lastInternetCheck = millis();
+    HTTPClient http;
+    http.setConnectTimeout(5000);
+    http.setTimeout(5000);
+    if (http.begin("http://example.com/")) {
+      lastHttpCode = http.GET();
+      internetOk = (lastHttpCode >= 200 && lastHttpCode < 400);
+      internetTested = true;
+      Serial.printf("[RAVA] Internet check: HTTP %d (%s)\\n",
+                    lastHttpCode, internetOk ? "OK" : "FAILED");
+      http.end();
+    } else {
+      lastHttpCode = -1;
+      internetOk = false;
+      internetTested = true;
+      Serial.println("[RAVA] Internet check: HTTP client init FAILED");
     }
   }
   delay(100);
