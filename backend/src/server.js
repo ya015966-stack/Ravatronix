@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
+import { createChatProvider } from "./chat-provider.js";
 
 const MAX_CAMERA_BYTES = 2 * 1024 * 1024;
 const MAX_WS_BYTES = 16 * 1024;
@@ -40,7 +41,10 @@ function readLimitedBody(request, limit) {
   });
 }
 
-export function createRavaServer({ deviceToken = process.env.RAVA_DEVICE_TOKEN } = {}) {
+export function createRavaServer({
+  deviceToken = process.env.RAVA_DEVICE_TOKEN,
+  chatProvider = createChatProvider({ mode: process.env.RAVA_CHAT_MODE ?? "demo" })
+} = {}) {
   if (!deviceToken) {
     throw new Error("RAVA_DEVICE_TOKEN is required; refusing to start without device authentication.");
   }
@@ -104,7 +108,7 @@ export function createRavaServer({ deviceToken = process.env.RAVA_DEVICE_TOKEN }
     }, AUTH_TIMEOUT_MS);
     authTimer.unref();
 
-    socket.on("message", (raw) => {
+    socket.on("message", async (raw) => {
       let message;
       try {
         message = JSON.parse(raw.toString());
@@ -127,11 +131,21 @@ export function createRavaServer({ deviceToken = process.env.RAVA_DEVICE_TOKEN }
 
       if (message?.type === "chat" && typeof message.message_id === "string" &&
           typeof message.text === "string") {
-        socket.send(JSON.stringify({
-          type: "chat_response",
-          message_id: message.message_id,
-          text: "پیام دریافت شد؛ اتصال زنده است."
-        }));
+        try {
+          const reply = await chatProvider.reply({
+            messageId: message.message_id,
+            text: message.text
+          });
+          if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply));
+        } catch {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: "chat_error",
+              message_id: message.message_id,
+              error: "chat_provider_unavailable"
+            }));
+          }
+        }
         return;
       }
 

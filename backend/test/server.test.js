@@ -36,7 +36,9 @@ test("device authenticates over WebSocket and receives a realtime message acknow
     const reply = JSON.parse(replyRaw.toString());
     assert.equal(reply.type, "chat_response");
     assert.equal(reply.message_id, "m-1");
-    assert.equal(reply.text, "پیام دریافت شد؛ اتصال زنده است.");
+    assert.equal(reply.text, "حالت آزمایشی فعال است؛ هنوز مدل هوش مصنوعی متصل نشده است.");
+    assert.equal(reply.mode, "demo");
+    assert.equal(reply.provider, "demo");
     socket.close();
   });
 });
