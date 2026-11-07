@@ -5,7 +5,7 @@ Node.js service for the first authenticated connection between RAVA and the clou
 ## Included
 
 - `GET /health`: public service health check.
-- `WSS /ws`: authenticated device connection and realtime chat acknowledgement.
+- `WSS /ws`: authenticated device connection and chat-provider adapter.
 - `POST /api/camera`: authenticated JPEG upload (up to 2 MiB). This phase validates and acknowledges the image; it does not persist or forward it.
 - Device authentication uses the first WebSocket JSON message, not a URL query parameter, so the secret is not placed in request URLs.
 
@@ -15,7 +15,7 @@ Requires Node.js 20 or newer.
 
 ```sh
 npm install
-RAVA_DEVICE_TOKEN='your-long-random-secret' npm start
+RAVA_DEVICE_TOKEN='your-long-random-secret' RAVA_CHAT_MODE=demo npm start
 npm test
 ```
 
@@ -33,13 +33,13 @@ The server replies with `auth_ok`. A device can then send:
 {"type":"chat","message_id":"msg-001","text":"سلام RAVA"}
 ```
 
-The current development response is:
+The default `RAVA_CHAT_MODE=demo` response is explicitly marked as a test response:
 
 ```json
-{"type":"chat_response","message_id":"msg-001","text":"پیام دریافت شد؛ اتصال زنده است."}
+{"type":"chat_response","message_id":"msg-001","text":"حالت آزمایشی فعال است؛ هنوز مدل هوش مصنوعی متصل نشده است.","mode":"demo","provider":"demo"}
 ```
 
-This acknowledgement proves transport only; it is not an AI-generated answer.
+This is not an AI-generated answer. Unsupported provider modes fail explicitly rather than silently falling back to a fake AI response.
 
 ## Camera upload
 
