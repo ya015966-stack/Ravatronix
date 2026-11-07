@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feat/rava-free-chat-core
+      - feat/rava-cloudflare-workers-ai-config
   pull_request:
     branches:
       - feat/rava-realtime-backend
+      - feat/rava-openai-compatible-provider
 
 jobs:
   test:
