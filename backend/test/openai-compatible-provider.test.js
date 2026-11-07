@@ -28,6 +28,7 @@ test("openai-compatible provider sends the chat and returns the model reply", as
   assert.equal(request.url, "https://llm.example.test/v1/chat/completions");
   assert.equal(request.options.headers.authorization, "Bearer test-secret");
   assert.equal(JSON.parse(request.options.body).model, "small-chat-model");
+  assert.deepEqual(JSON.parse(request.options.body).messages[0], { role: "system", content: "You are RAVA, a helpful Persian-speaking assistant. Reply in Persian unless the user asks otherwise. Be concise, honest, and safety-conscious." });
   assert.deepEqual(JSON.parse(request.options.body).messages.at(-1), { role: "user", content: "سلام" });
 });
 
