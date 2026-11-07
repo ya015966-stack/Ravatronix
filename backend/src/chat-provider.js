@@ -31,7 +31,13 @@ function createOpenAICompatibleProvider({ baseUrl, apiKey, model, fetchImpl = fe
         },
         body: JSON.stringify({
           model,
-          messages: [{ role: "user", content: text }],
+          messages: [
+            {
+              role: "system",
+              content: "You are RAVA, a helpful Persian-speaking assistant. Reply in Persian unless the user asks otherwise. Be concise, honest, and safety-conscious."
+            },
+            { role: "user", content: text }
+          ],
           temperature: 0.4,
           max_tokens: 500
         }),
