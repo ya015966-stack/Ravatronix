@@ -1,0 +1,8 @@
+name = "ravatronix-backend"
+main = "src/worker.js"
+compatibility_date = "2026-11-07"
+workers_dev = true
+
+[vars]
+# Set RAVA_DEVICE_TOKEN as an encrypted secret with:
+# npx wrangler secret put RAVA_DEVICE_TOKEN
