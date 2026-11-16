@@ -12,23 +12,55 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build ESP-IDF firmware
+        with:
+          ref: feat/firmware-integration
+
+      - name: Build ESP-IDF firmware (capture full report)
+        id: build
+        continue-on-error: true
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.3.2
           target: esp32s3
           path: firmware/esp32_s3
           command: |
-            set -euo pipefail
-            python -m pip install pytest
-            python -m pytest tests/host -q
-            idf.py reconfigure
-            idf.py build
-            python -m esptool --chip esp32s3 merge_bin -o build/Ravatronix_ESP32S3_N16R8.bin -f raw --flash_mode dio --flash_freq 40m --flash_size 16MB 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/ravatronix_firmware.bin
-            test -s build/Ravatronix_ESP32S3_N16R8.bin
-      - uses: actions/upload-artifact@v4
+            set -o pipefail
+            {
+              set -euo pipefail
+              echo "=== Ravatronix firmware build report ==="
+              echo "ESP-IDF: v5.3.2"
+              echo "Target: esp32s3"
+              echo "Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              python -m pip install pytest
+              python -m pytest tests/host -q
+              idf.py reconfigure
+              idf.py build
+              python -m esptool --chip esp32s3 merge_bin -o build/Ravatronix_ESP32S3_N16R8.bin -f raw --flash_mode dio --flash_freq 40m --flash_size 16MB 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/ravatronix_firmware.bin
+              test -s build/Ravatronix_ESP32S3_N16R8.bin
+              echo "BUILD_RESULT=SUCCESS"
+              echo "Finished: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            } 2>&1 | tee build-report.log
+
+      - name: Upload build report (kept even when build fails)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ravatronix-build-report
+          path: firmware/esp32_s3/build-report.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload firmware binary
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
         with:
           name: Ravatronix-ESP32S3-N16R8-Integrated
           path: firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8.bin
           if-no-files-found: error
           retention-days: 14
+
+      - name: Mark workflow failed when build failed
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "Firmware build failed. Download the Ravatronix-build-report artifact."
+          exit 1
