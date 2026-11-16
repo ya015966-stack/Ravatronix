@@ -38,3 +38,13 @@ def test_camera_is_enabled_for_initial_capture_while_unverified_modules_stay_off
     assert "CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y" in defaults
     assert "CONFIG_RAVA_ENABLE_AUDIO=n" in defaults
     assert "CONFIG_RAVA_ENABLE_CELLULAR=n" in defaults
+
+
+def test_managed_dependencies_are_declared_in_their_component_manifests():
+    main_manifest = (ROOT / "main" / "idf_component.yml").read_text()
+    camera_manifest = (ROOT / "components" / "camera_service" / "idf_component.yml").read_text()
+    network_manifest = (ROOT / "components" / "network_service" / "idf_component.yml").read_text()
+    assert 'idf: ">=5.3.2,<5.4.0"' in main_manifest
+    assert 'espressif/esp32-camera: "2.1.9"' in camera_manifest
+    assert 'espressif/esp_modem: "1.4.0"' in network_manifest
+    assert not (ROOT / "idf_component.yml").exists()
