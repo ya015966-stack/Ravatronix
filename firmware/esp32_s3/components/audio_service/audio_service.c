@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 #include <string.h>
+#include <stdbool.h>
 
 #define RAVA_AUDIO_RATE 16000
 #define RAVA_AUDIO_DMA_FRAMES 256
