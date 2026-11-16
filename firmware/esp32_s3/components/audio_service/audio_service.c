@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "audio_service.h"
 #include "board_config.h"
 #include "driver/i2s_std.h"
@@ -15,6 +16,10 @@ static bool s_initialized;
 
 esp_err_t audio_service_init(void)
 {
+#if !CONFIG_RAVA_ENABLE_AUDIO || !CONFIG_RAVA_AUDIO_WIRING_CONFIRMED || !CONFIG_RAVA_MIC_FORMAT_CONFIRMED
+    ESP_LOGW(TAG, "audio init refused: feature, wiring, or microphone-format gate is disabled");
+    return ESP_ERR_INVALID_STATE;
+#else
     if (s_initialized) return ESP_OK;
     i2s_chan_config_t rx_chan = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     rx_chan.dma_desc_num = 6;
@@ -61,6 +66,7 @@ esp_err_t audio_service_init(void)
     s_initialized = true;
     ESP_LOGI(TAG, "I2S mic and speaker channels ready at %d Hz", RAVA_AUDIO_RATE);
     return ESP_OK;
+#endif
 }
 
 esp_err_t audio_service_read_pcm(int32_t *dst, size_t capacity_samples,
