@@ -9,4 +9,4 @@ def test_backend_requires_https_and_runtime_bearer_token():
     assert "esp_crt_bundle_attach" in source
     assert 'set_header(client, "Authorization", auth)' in source
     assert "const char *bearer_token" in header
-    assert `"Bearer %s"` in source
+    assert '"Bearer %s"' in source
