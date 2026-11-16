@@ -11,6 +11,8 @@
 #include "freertos/event_groups.h"
 
 static const char *TAG = "rava_network";
+
+#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED
 static esp_modem_dce_t *s_dce;
 static esp_netif_t *s_ppp_netif;
 static EventGroupHandle_t s_events;
@@ -27,6 +29,7 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t id, void *data
         if (s_events) xEventGroupClearBits(s_events, PPP_READY_BIT);
     }
 }
+#endif
 
 esp_err_t network_service_start(void)
 {
@@ -76,6 +79,10 @@ esp_err_t network_service_start(void)
 
 bool network_service_is_ready(void)
 {
+#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED
     return s_events &&
            (xEventGroupGetBits(s_events) & PPP_READY_BIT) != 0;
+#else
+    return false;
+#endif
 }
