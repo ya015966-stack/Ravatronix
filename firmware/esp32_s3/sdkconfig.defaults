@@ -11,7 +11,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y
 CONFIG_LWIP_PPP_SUPPORT=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
-# Peripheral services remain disabled until their individual hardware gates pass.
+# Camera runs one initial capture; audio and cellular remain hardware-gated.
 CONFIG_RAVA_ENABLE_CAMERA=y
 CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y
 CONFIG_RAVA_ENABLE_AUDIO=n
