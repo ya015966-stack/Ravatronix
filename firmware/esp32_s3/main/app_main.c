@@ -26,18 +26,16 @@ static const char *TAG = "ravatronix";
 static void camera_monitor_task(void *arg)
 {
     (void)arg;
-    while (1) {
-        camera_frame_t frame = {0};
-        esp_err_t err = camera_service_capture_jpeg(&frame);
-        if (err == ESP_OK) {
-            ESP_LOGI("rava_camera", "JPEG snapshot %ux%u, %u bytes",
-                     frame.width, frame.height, (unsigned)frame.length);
-            camera_service_release(&frame);
-        } else {
-            ESP_LOGW("rava_camera", "capture: %s", esp_err_to_name(err));
-        }
-        vTaskDelay(pdMS_TO_TICKS(30000));
+    camera_frame_t frame = {0};
+    esp_err_t err = camera_service_capture_jpeg(&frame);
+    if (err == ESP_OK) {
+        ESP_LOGI("rava_camera", "initial JPEG snapshot %ux%u, %u bytes",
+                 frame.width, frame.height, (unsigned)frame.length);
+        camera_service_release(&frame);
+    } else {
+        ESP_LOGW("rava_camera", "initial capture: %s", esp_err_to_name(err));
     }
+    vTaskDelete(NULL);
 }
 #endif
 
