@@ -3,9 +3,8 @@
 #include "driver/uart.h"
 
 /* Ravatronix ESP32-S3-N16R8 board profile.
- * Camera pin map and modem UART are the values recorded for this unit.
- * Keep them centralized so a board revision can be corrected without
- * changing service code.
+ * GPIO values below are provisional records, not electrically verified.
+ * Runtime startup is gated in Kconfig until each hardware map is confirmed.
  */
 #define RAVA_BOARD_NAME "ESP32-S3-N16R8"
 #define RAVA_FLASH_SIZE_MB 16
