@@ -1,0 +1,42 @@
+name: Build Ravatronix ESP-IDF firmware
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-esp32s3:
+    name: ESP32-S3-N16R8 firmware build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build and merge ESP-IDF firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.2
+          target: esp32s3
+          path: firmware/esp32_s3
+          command: idf.py build && idf.py merge-bin -o build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin -f raw
+
+      - name: Verify merged firmware exists
+        shell: bash
+        run: |
+          test -s firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin
+          stat -c '%n %s bytes' firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin
+
+      - name: Upload ESP-IDF firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ravatronix-ESP32S3-N16R8-ESP-IDF
+          path: |
+            firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin
+            firmware/esp32_s3/build/flasher_args.json
+          if-no-files-found: error
+          retention-days: 14
