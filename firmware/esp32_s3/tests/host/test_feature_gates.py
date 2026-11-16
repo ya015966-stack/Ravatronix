@@ -30,7 +30,8 @@ def test_apn_is_not_assumed_for_an_unconfirmed_sim_operator():
     assert block is not None
     assert re.search(r'default ""', block.group(1))
 
-\n
+
+
 def test_camera_is_enabled_for_initial_capture_while_unverified_modules_stay_off():
     defaults = (ROOT / "sdkconfig.defaults").read_text()
     assert "CONFIG_RAVA_ENABLE_CAMERA=y" in defaults
