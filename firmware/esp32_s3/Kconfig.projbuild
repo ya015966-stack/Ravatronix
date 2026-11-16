@@ -1,0 +1,14 @@
+menu "Ravatronix firmware"
+    config RAVA_MODEM_APN
+        string "Cellular APN"
+        default "mtnirancell"
+        help
+            Public APN setting for the configured cellular operator.
+            Do not put SIM PINs or private credentials here.
+
+    config RAVA_BACKEND_URL
+        string "Backend HTTPS endpoint"
+        default ""
+        help
+            Optional HTTPS endpoint. Authentication token is supplied at runtime.
+endmenu
