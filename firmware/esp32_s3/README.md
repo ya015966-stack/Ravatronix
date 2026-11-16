@@ -1,28 +1,32 @@
-# ESP32-S3 Firmware Bring-up
+# Ravatronix ESP32-S3 firmware
 
-Target reported by the project owner: ESP32-S3-N16R8, with OV3660 camera connected by FFC. Cellular modem A7670E is a separate module.
+ESP-IDF v5.3.2 application for the ESP32-S3-N16R8 controller.
 
-## Phase 1 — safe baseline
-- [ ] Confirm exact board manufacturer/revision and pinout.
-- [ ] Select ESP32-S3 in the build environment; use 16 MB flash only if confirmed by the module/board specification.
-- [ ] Confirm PSRAM type and enable the matching setting only when supported by this board.
-- [ ] Build a serial-only test before adding camera or modem libraries.
-- [ ] Flash through the correct USB connector and save the serial boot log.
+## Build
 
-## Phase 2 — camera
-- [ ] Confirm the OV3660 sensor is supported by the selected camera driver/version.
-- [ ] Obtain the exact camera GPIO map from the board schematic; do not copy pin maps from unrelated ESP32-S3 camera boards.
-- [ ] Inspect/reseat the FFC with power disconnected.
-- [ ] Test camera initialization and one frame before enabling networking.
+From this directory in an ESP-IDF v5.3.2 shell:
 
-## Phase 3 — modem
-- [ ] Identify the A7670E carrier-board power input and UART logic levels from its documentation.
-- [ ] Use a suitable supply with adequate current headroom; share ground with the ESP32-S3.
-- [ ] Confirm UART pins and baud rate from the actual wiring.
-- [ ] Test basic AT responses, SIM registration, APN, and data connection separately.
+```sh
+idf.py set-target esp32s3
+idf.py reconfigure
+idf.py build
+```
 
-## Build environment
-Use Arduino IDE-compatible tooling or PlatformIO. On Android, browser-based compilers may have limited board-menu and USB options; if a build cannot expose the required settings, use a reproducible cloud build rather than guessing configuration.
+The board profile uses 16 MB flash and 8 MB octal PSRAM. The initial
+configuration selects DIO/40 MHz flash and 40 MHz PSRAM, matching the known
+successful diagnostic boot profile. Component versions are pinned in
+`idf_component.yml`.
 
-## Current status
-No new firmware is assumed to be installed. GPIO mapping, camera detection, modem wiring, and successful compilation are **not yet verified**.
+## Recorded hardware map
+
+Camera: XCLK 15, SCCB 4/5, data 16/17/18/12/10/8/9/11, VSYNC 6, HREF 7,
+PCLK 13. Microphone: I2S0 BCLK/WS/DOUT 38/39/40. MAX98357A: I2S1
+BCLK/WS/DIN 1/2/21. A7670E UART: ESP TX 48, ESP RX 47.
+
+## Provisioning and safety
+
+APN and backend URL/credentials are runtime configuration. Never commit SIM
+PINs, bearer tokens, private keys, or certificates. Camera data is not exposed
+through an unauthenticated public HTTP endpoint.
+
+The older Arduino camera Wi-Fi sketch is retained as a legacy diagnostic only.
