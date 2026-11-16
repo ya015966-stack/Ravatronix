@@ -37,11 +37,11 @@ jobs:
               python -m pytest tests/host -q
               idf.py reconfigure
               echo "=== Effective RAVA configuration ==="
-              grep '^CONFIG_RAVA_ENABLE_CAMERA=y$' sdkconfig
-              grep '^CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y$' sdkconfig
-              grep '^# CONFIG_RAVA_ENABLE_AUDIO is not set$' sdkconfig
-              grep '^# CONFIG_RAVA_ENABLE_CELLULAR is not set$' sdkconfig
-              ! grep -q "unknown kconfig symbol 'RAVA_" build-report.log
+              grep "^CONFIG_RAVA_ENABLE_CAMERA=y$" sdkconfig
+              grep "^CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y$" sdkconfig
+              grep "^# CONFIG_RAVA_ENABLE_AUDIO is not set$" sdkconfig
+              grep "^# CONFIG_RAVA_ENABLE_CELLULAR is not set$" sdkconfig
+              ! grep -q "unknown kconfig symbol" build-report.log
               idf.py build
               python -m esptool --chip esp32s3 merge_bin -o build/Ravatronix_ESP32S3_N16R8.bin -f raw --flash_mode dio --flash_freq 40m --flash_size 16MB 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/ravatronix_firmware.bin
               test -s build/Ravatronix_ESP32S3_N16R8.bin
