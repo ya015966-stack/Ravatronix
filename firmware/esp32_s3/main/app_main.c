@@ -9,6 +9,7 @@
 #include "board_config.h"
 #include "camera_service.h"
 #include "audio_service.h"
+#include "network_service.h"
 
 static const char *TAG = "ravatronix";
 
@@ -61,6 +62,11 @@ void app_main(void)
         xTaskCreate(camera_monitor_task, "camera_monitor", 4096, NULL, 4, NULL);
     } else {
         ESP_LOGE(TAG, "camera service unavailable: %s", esp_err_to_name(cam_err));
+    }
+
+    esp_err_t net_err = network_service_start();
+    if (net_err != ESP_OK) {
+        ESP_LOGE(TAG, "cellular network startup failed: %s", esp_err_to_name(net_err));
     }
 
     esp_err_t audio_err = audio_service_init();
