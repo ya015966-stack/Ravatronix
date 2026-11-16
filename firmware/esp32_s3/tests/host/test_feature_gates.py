@@ -4,7 +4,7 @@ import re
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_unverified_peripherals_are_disabled_by_default():
+def test_kconfig_safety_gates_default_to_closed():
     config = (ROOT / "Kconfig.projbuild").read_text()
     for option in (
         "RAVA_ENABLE_CAMERA",
