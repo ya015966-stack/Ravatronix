@@ -24,17 +24,17 @@ def test_kconfig_safety_gates_default_to_closed():
         "RAVA_MODEM_ELECTRICAL_CONFIRMED",
     ):
         block = re.search(
-            rf"config {option}\\b(.*?)(?=\\n\\s*config |\\nendmenu)",
+            rf"config {option}\b(.*?)(?=\n\s*config |\nendmenu)",
             config,
             re.S,
         )
         assert block is not None, f"missing safety gate: {option}"
-        assert re.search(r"\\bdefault n\\b", block.group(1)), option
+        assert re.search(r"\bdefault n\b", block.group(1)), option
 
 
 def test_apn_is_not_assumed_for_an_unconfirmed_sim_operator():
     config = KCONFIG.read_text()
-    block = re.search(r'config RAVA_MODEM_APN\\b(.*?)(?=\\n\\s*config |\\nendmenu)', config, re.S)
+    block = re.search(r'config RAVA_MODEM_APN\b(.*?)(?=\n\s*config |\nendmenu)', config, re.S)
     assert block is not None
     assert re.search(r'default ""', block.group(1))
 
