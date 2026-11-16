@@ -5,6 +5,7 @@
 #include "esp_system.h"
 #include "esp_psram.h"
 #include "esp_heap_caps.h"
+#include <math.h>
 
 #if CONFIG_RAVA_ENABLE_CAMERA && CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED
 #include "camera_service.h"
