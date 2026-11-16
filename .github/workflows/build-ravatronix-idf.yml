@@ -23,12 +23,13 @@ jobs:
           esp_idf_version: v5.3.2
           target: esp32s3
           path: firmware/esp32_s3
-          command: idf.py build && idf.py merge-bin -o build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin -f raw
+          command: idf.py build && idf.py merge-bin -f raw
 
-      - name: Verify merged firmware exists
+      - name: Verify and name merged firmware
         shell: bash
         run: |
-          test -s firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin
+          test -s firmware/esp32_s3/build/merged-binary.bin
+          cp firmware/esp32_s3/build/merged-binary.bin firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin
           stat -c '%n %s bytes' firmware/esp32_s3/build/Ravatronix_ESP32S3_N16R8_IDF_merged.bin
 
       - name: Upload ESP-IDF firmware artifact
