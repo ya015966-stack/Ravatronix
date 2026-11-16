@@ -3,6 +3,7 @@
 #include "esp_crt_bundle.h"
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 
 esp_err_t backend_client_upload_snapshot(const char *https_url,
                                          const char *bearer_token,
