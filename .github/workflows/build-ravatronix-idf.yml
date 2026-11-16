@@ -10,20 +10,26 @@ jobs:
   build-esp32s3:
     name: ESP32-S3-N16R8 firmware build
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Build and merge ESP-IDF firmware
-        uses: espressif/esp-idf-ci-action@v1
+      - name: Install ESP-IDF v5.3.2
+        uses: espressif/install-esp-idf-action@v1
         with:
-          esp_idf_version: v5.3.2
-          target: esp32s3
-          path: firmware/esp32_s3
-          command: idf.py build && idf.py merge-bin -f raw
+          version: v5.3.2
+
+      - name: Build and merge firmware
+        shell: bash
+        run: |
+          cd firmware/esp32_s3
+          idf.py set-target esp32s3
+          idf.py reconfigure
+          idf.py build
+          idf.py merge-bin -f raw
 
       - name: Verify and name merged firmware
         shell: bash
