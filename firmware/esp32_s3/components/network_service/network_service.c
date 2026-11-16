@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "network_service.h"
 #include "board_config.h"
 #include "esp_modem_api.h"
@@ -8,7 +9,6 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include "sdkconfig.h"
 
 static const char *TAG = "rava_network";
 static esp_modem_dce_t *s_dce;
@@ -30,11 +30,16 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t id, void *data
 
 esp_err_t network_service_start(void)
 {
+#if !CONFIG_RAVA_ENABLE_CELLULAR || !CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED
+    ESP_LOGW(TAG, "refusing modem startup: cellular feature or electrical gate is disabled");
+    return ESP_ERR_INVALID_STATE;
+#else
     if (s_dce) return ESP_OK;
-if (CONFIG_RAVA_MODEM_APN[0] == '\0') {
+    if (CONFIG_RAVA_MODEM_APN[0] == '\0') {
         ESP_LOGE(TAG, "cellular APN is not configured");
         return ESP_ERR_INVALID_STATE;
     }
+
     esp_err_t err = esp_netif_init();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) return err;
     err = esp_event_loop_create_default();
@@ -66,6 +71,7 @@ if (CONFIG_RAVA_MODEM_APN[0] == '\0') {
     }
     ESP_LOGI(TAG, "A7670E PPP startup requested; waiting for IP event");
     return ESP_OK;
+#endif
 }
 
 bool network_service_is_ready(void)
