@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_psram.h"
+#include "esp_heap_caps.h"
 #include "board_config.h"
 
 static const char *TAG = "ravatronix";
