@@ -30,10 +30,10 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t id, void *data
 esp_err_t network_service_start(void)
 {
     if (s_dce) return ESP_OK;
-#if !defined(CONFIG_RAVA_MODEM_APN) || CONFIG_RAVA_MODEM_APN[0] == '\0'
-    ESP_LOGE(TAG, "cellular APN is not configured");
-    return ESP_ERR_INVALID_STATE;
-#endif
+if (CONFIG_RAVA_MODEM_APN[0] == '\0') {
+        ESP_LOGE(TAG, "cellular APN is not configured");
+        return ESP_ERR_INVALID_STATE;
+    }
     esp_err_t err = esp_netif_init();
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) return err;
     err = esp_event_loop_create_default();
