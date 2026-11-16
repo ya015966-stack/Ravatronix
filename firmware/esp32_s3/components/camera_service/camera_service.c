@@ -3,6 +3,7 @@
 #include "board_config.h"
 #include "esp_log.h"
 #include <string.h>
+#include <stdbool.h>
 
 static const char *TAG = "rava_camera";
 static bool s_initialized;
