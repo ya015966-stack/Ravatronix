@@ -29,9 +29,8 @@ idf.py merge-bin -f raw
 ```
 
 The board profile selects 16 MB flash and 8 MB octal PSRAM, with DIO/40 MHz
-flash and 40 MHz PSRAM based on the known-good diagnostic boot. Component
-versions are pinned in `idf_component.yml`. Managed dependencies are declared in the manifest of the component that uses
-them: `main/idf_component.yml` pins ESP-IDF compatibility,
+flash and 40 MHz PSRAM based on the known-good diagnostic boot. Managed
+dependencies are declared in the manifest of the component that uses them: `main/idf_component.yml` pins ESP-IDF compatibility,
 `components/camera_service/idf_component.yml` pins `espressif/esp32-camera`
 to `2.1.9`, and `components/network_service/idf_component.yml` pins
 `espressif/esp_modem` to `1.4.0`. The camera release includes the JPEG EOI
