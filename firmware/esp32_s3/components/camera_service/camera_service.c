@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "camera_service.h"
 #include "board_config.h"
 #include "esp_log.h"
@@ -8,6 +9,10 @@ static bool s_initialized;
 
 esp_err_t camera_service_init(void)
 {
+#if !CONFIG_RAVA_ENABLE_CAMERA || !CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED
+    ESP_LOGW(TAG, "camera init refused: feature or GPIO-map confirmation gate is disabled");
+    return ESP_ERR_INVALID_STATE;
+#else
     if (s_initialized) return ESP_OK;
     camera_config_t config = {
         .pin_pwdn = RAVA_CAM_PIN_PWDN,
@@ -48,6 +53,7 @@ esp_err_t camera_service_init(void)
     s_initialized = true;
     ESP_LOGI(TAG, "camera initialized");
     return ESP_OK;
+#endif
 }
 
 esp_err_t camera_service_capture_jpeg(camera_frame_t *out)
