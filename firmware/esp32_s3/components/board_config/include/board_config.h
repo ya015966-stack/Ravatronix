@@ -1,5 +1,6 @@
 #pragma once
 #include "driver/gpio.h"
+#include "driver/uart.h"
 
 /* Ravatronix ESP32-S3-N16R8 board profile.
  * Camera pin map and modem UART are the values recorded for this unit.
