@@ -2,10 +2,18 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[2]
+KCONFIG = ROOT / "main" / "Kconfig.projbuild"
+
+
+def test_project_kconfig_is_discovered_from_main_directory():
+    assert KCONFIG.is_file(), "ESP-IDF project options must live in main/Kconfig.projbuild"
+    assert not (ROOT / "Kconfig.projbuild").exists(), (
+        "root-level Kconfig.projbuild is not discovered for this project layout"
+    )
 
 
 def test_kconfig_safety_gates_default_to_closed():
-    config = (ROOT / "Kconfig.projbuild").read_text()
+    config = KCONFIG.read_text()
     for option in (
         "RAVA_ENABLE_CAMERA",
         "RAVA_CAMERA_PINMAP_CONFIRMED",
@@ -16,20 +24,19 @@ def test_kconfig_safety_gates_default_to_closed():
         "RAVA_MODEM_ELECTRICAL_CONFIRMED",
     ):
         block = re.search(
-            rf"config {option}\b(.*?)(?=\n\s*config |\nendmenu)",
+            rf"config {option}\\b(.*?)(?=\\n\\s*config |\\nendmenu)",
             config,
             re.S,
         )
         assert block is not None, f"missing safety gate: {option}"
-        assert re.search(r"\bdefault n\b", block.group(1)), option
+        assert re.search(r"\\bdefault n\\b", block.group(1)), option
 
 
 def test_apn_is_not_assumed_for_an_unconfirmed_sim_operator():
-    config = (ROOT / "Kconfig.projbuild").read_text()
-    block = re.search(r"config RAVA_MODEM_APN\b(.*?)(?=\n\s*config |\nendmenu)", config, re.S)
+    config = KCONFIG.read_text()
+    block = re.search(r'config RAVA_MODEM_APN\\b(.*?)(?=\\n\\s*config |\\nendmenu)', config, re.S)
     assert block is not None
     assert re.search(r'default ""', block.group(1))
-
 
 
 def test_camera_is_enabled_for_initial_capture_while_unverified_modules_stay_off():
