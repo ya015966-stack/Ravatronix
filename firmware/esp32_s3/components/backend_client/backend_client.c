@@ -2,6 +2,7 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include <string.h>
+#include <stdio.h>
 
 esp_err_t backend_client_upload_snapshot(const char *https_url,
                                          const char *bearer_token,
@@ -13,6 +14,7 @@ esp_err_t backend_client_upload_snapshot(const char *https_url,
         frame->length == 0 || timeout_ms <= 0 || !http_status) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (frame->length > INT_MAX) return ESP_ERR_INVALID_SIZE;
     *http_status = 0;
     if (strncmp(https_url, "https://", 8) != 0) return ESP_ERR_INVALID_ARG;
 
