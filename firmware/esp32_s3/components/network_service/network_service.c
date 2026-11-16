@@ -1,6 +1,7 @@
 #include "network_service.h"
 #include "board_config.h"
 #include "esp_modem_api.h"
+#include "driver/uart.h"
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_log.h"
