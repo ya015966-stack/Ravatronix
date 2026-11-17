@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/rava-ai-voice-v1
+      - feat/rava-websocket-ai-chat
   pull_request:
     branches:
       - main
