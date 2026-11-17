@@ -5,7 +5,7 @@ Node.js service for the first authenticated connection between RAVA and the clou
 ## Included
 
 - `GET /health`: public service health check.
-- `WSS /ws`: authenticated device connection and realtime chat acknowledgement.
+- `WSS /ws`: authenticated device connection and realtime AI chat.
 - `POST /api/camera`: authenticated JPEG upload (up to 2 MiB). This phase validates and acknowledges the image; it does not persist or forward it.
 - Device authentication uses the first WebSocket JSON message, not a URL query parameter, so the secret is not placed in request URLs.
 
@@ -33,13 +33,9 @@ The server replies with `auth_ok`. A device can then send:
 {"type":"chat","message_id":"msg-001","text":"سلام RAVA"}
 ```
 
-The current development response is:
+The backend forwards the text to the configured AI provider and returns its generated answer as `chat_response`. If the provider is unavailable, it returns an explicit error instead of fabricating a reply.
 
-```json
-{"type":"chat_response","message_id":"msg-001","text":"پیام دریافت شد؛ اتصال زنده است."}
-```
-
-This acknowledgement proves transport only; it is not an AI-generated answer.
+The same service also exposes `POST /api/ai/chat` for authenticated JSON chat and `POST /api/voice/turn` for authenticated WAV speech turns. Voice input must be mono PCM16, 16 kHz WAV (maximum 8 seconds); the response is WAV audio. Configure `RAVA_AI_BASE_URL`, `RAVA_AI_API_KEY`, and `RAVA_AI_MODEL` in the host secret manager. For speech, configure `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`.
 
 ## Camera upload
 
