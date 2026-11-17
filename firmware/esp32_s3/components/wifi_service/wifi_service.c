@@ -28,7 +28,6 @@ static httpd_handle_t s_httpd;
 static volatile wifi_service_state_t s_state = WIFI_SERVICE_STATE_STOPPED;
 static volatile bool s_ready;
 static bool s_started;
-static bool s_wifi_initialized;
 static bool s_have_credentials;
 static bool s_provisioning;
 
@@ -272,7 +271,6 @@ esp_err_t wifi_service_start(void)
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
     err = esp_wifi_init(&wifi_config);
     if (err != ESP_OK) return err;
-    s_wifi_initialized = true;
 
     err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                      wifi_event_handler, NULL);
