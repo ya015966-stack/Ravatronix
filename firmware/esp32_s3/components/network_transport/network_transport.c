@@ -4,6 +4,7 @@
 #include "esp_http_client.h"
 
 #include <stdbool.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,9 +26,11 @@ esp_err_t network_transport_open(const char *https_url,
     if (!https_url || !content_type || !authorization || !out_handle ||
         strncmp(https_url, "https://", 8) != 0 ||
         timeout_ms < 1000U || timeout_ms > NETWORK_TRANSPORT_MAX_TIMEOUT_MS ||
-        content_length == 0U ||
+        content_length == 0U || content_length > (uint32_t)INT_MAX ||
         strlen(content_type) >= NETWORK_TRANSPORT_MAX_HEADER ||
-        strlen(authorization) >= NETWORK_TRANSPORT_MAX_HEADER) {
+        strlen(authorization) >= NETWORK_TRANSPORT_MAX_HEADER ||
+        strchr(content_type, '\r') || strchr(content_type, '\n') ||
+        strchr(authorization, '\r') || strchr(authorization, '\n')) {
         return ESP_ERR_INVALID_ARG;
     }
 
