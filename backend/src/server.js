@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createOpenAICompatibleProvider } from "./ai-provider.js";
+import { createAzureSpeechProvider } from "./azure-speech-provider.js";
 import { inspectPcm16Mono16kWav, processVoiceTurn, VoiceRequestError } from "./voice-service.js";
 import { WebSocketServer, WebSocket } from "ws";
 
@@ -47,7 +48,7 @@ function readLimitedBody(request, limit) {
 export function createRavaServer({
   deviceToken = process.env.RAVA_DEVICE_TOKEN,
   aiProvider = createOpenAICompatibleProvider(),
-  speechProvider = null
+  speechProvider = createAzureSpeechProvider()
 } = {}) {
   if (!deviceToken) {
     throw new Error("RAVA_DEVICE_TOKEN is required; refusing to start without device authentication.");
