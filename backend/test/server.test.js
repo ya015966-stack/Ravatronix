@@ -4,8 +4,8 @@ import { once } from "node:events";
 import { WebSocket } from "ws";
 import { createRavaServer } from "../src/server.js";
 
-async function withServer(run) {
-  const app = createRavaServer({ deviceToken: "test-device-token" });
+async function withServer(run, overrides = {}) {
+  const app = createRavaServer({ deviceToken: "test-device-token", ...overrides });
   await new Promise((resolve) => app.server.listen(0, "127.0.0.1", resolve));
   const address = app.server.address();
   try {
@@ -23,7 +23,7 @@ test("GET /health reports an operational service without exposing secrets", asyn
   });
 });
 
-test("device authenticates over WebSocket and receives a realtime message acknowledgement", async () => {
+test("device authenticates over WebSocket and receives the actual AI provider reply", async () => {
   await withServer(async ({ wsUrl }) => {
     const socket = new WebSocket(wsUrl);
     await once(socket, "open");
@@ -36,9 +36,12 @@ test("device authenticates over WebSocket and receives a realtime message acknow
     const reply = JSON.parse(replyRaw.toString());
     assert.equal(reply.type, "chat_response");
     assert.equal(reply.message_id, "m-1");
-    assert.equal(reply.text, "پیام دریافت شد؛ اتصال زنده است.");
+    assert.equal(reply.text, "سلام! من راوا هستم.");
     socket.close();
-  });
+  }, { aiProvider: { completeChat: async ({ messages }) => {
+    assert.equal(messages.at(-1).content, "سلام RAVA");
+    return "سلام! من راوا هستم.";
+  } } });
 });
 
 test("unauthenticated WebSocket clients are rejected", async () => {
