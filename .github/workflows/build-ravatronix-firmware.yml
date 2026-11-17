@@ -34,7 +34,10 @@ jobs:
               echo "Target: esp32s3"
               echo "Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
               python -m pip install pytest
-              python -m pytest tests/host -q
+              for test_file in tests/host/test_*.py; do
+                echo "=== Host test: ${test_file} ==="
+                python -m pytest "${test_file}" -q
+              done
               idf.py reconfigure
               echo "=== Effective RAVA configuration ==="
               grep "^CONFIG_RAVA_ENABLE_CAMERA=y$" sdkconfig
