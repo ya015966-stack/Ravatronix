@@ -1,9 +1,11 @@
 import { createServer } from "node:http";
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
+import { createOpenAICompatibleProvider } from "./ai-provider.js";
 import { WebSocketServer, WebSocket } from "ws";
 
 const MAX_CAMERA_BYTES = 2 * 1024 * 1024;
 const MAX_WS_BYTES = 16 * 1024;
+const MAX_CHAT_BYTES = 8 * 1024;
 const AUTH_TIMEOUT_MS = 5_000;
 
 function safeEqual(left, right) {
@@ -40,7 +42,10 @@ function readLimitedBody(request, limit) {
   });
 }
 
-export function createRavaServer({ deviceToken = process.env.RAVA_DEVICE_TOKEN } = {}) {
+export function createRavaServer({
+  deviceToken = process.env.RAVA_DEVICE_TOKEN,
+  aiProvider = createOpenAICompatibleProvider()
+} = {}) {
   if (!deviceToken) {
     throw new Error("RAVA_DEVICE_TOKEN is required; refusing to start without device authentication.");
   }
@@ -50,6 +55,54 @@ export function createRavaServer({ deviceToken = process.env.RAVA_DEVICE_TOKEN }
 
     if (request.method === "GET" && url.pathname === "/health") {
       return sendJson(response, 200, { status: "ok", service: "ravatronix-backend" });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/ai/chat") {
+      const authorization = request.headers.authorization ?? "";
+      const suppliedToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+      if (!safeEqual(suppliedToken, deviceToken)) {
+        return sendJson(response, 401, { error: "unauthorized" });
+      }
+      if (!String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+        return sendJson(response, 415, { error: "content_type_must_be_application_json" });
+      }
+
+      let payload;
+      try {
+        const rawBody = await readLimitedBody(request, MAX_CHAT_BYTES);
+        payload = JSON.parse(rawBody.toString("utf8"));
+      } catch (error) {
+        if (error.statusCode === 413) return sendJson(response, 413, { error: "request_too_large" });
+        if (!response.headersSent && !response.destroyed) return sendJson(response, 400, { error: "invalid_json" });
+        return;
+      }
+
+      if (typeof payload?.message !== "string" || !payload.message.trim() || payload.message.length > 4_000) {
+        return sendJson(response, 400, { error: "invalid_message" });
+      }
+      if (!aiProvider || typeof aiProvider.completeChat !== "function") {
+        return sendJson(response, 503, { error: "ai_provider_unavailable" });
+      }
+
+      try {
+        const reply = await aiProvider.completeChat({
+          messages: [
+            { role: "system", content: "تو RAVA، دستیار هوشمند ربات Ravatronix هستی. به‌طور پیش‌فرض فارسی، روشن و دقیق پاسخ بده. ادعای انجام عملیاتی را که واقعاً انجام نشده مطرح نکن." },
+            { role: "user", content: payload.message }
+          ]
+        });
+        if (typeof reply !== "string" || !reply.trim()) {
+          return sendJson(response, 502, { error: "ai_provider_invalid_response" });
+        }
+        return sendJson(response, 200, {
+          reply: reply.trim(),
+          conversation_id: typeof payload.conversation_id === "string" && payload.conversation_id
+            ? payload.conversation_id
+            : randomUUID()
+        });
+      } catch {
+        return sendJson(response, 502, { error: "ai_provider_failed" });
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/api/camera") {
