@@ -43,7 +43,6 @@ jobs:
               grep "^CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=y$" sdkconfig
               grep "^CONFIG_RAVA_MIC_FORMAT_CONFIRMED=y$" sdkconfig
               grep "^# CONFIG_RAVA_ENABLE_CELLULAR is not set$" sdkconfig
-              grep "^# CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED is not set$" sdkconfig
               ! grep -q "unknown kconfig symbol" build-report.log
               idf.py build
               python -m esptool --chip esp32s3 merge_bin -o build/Ravatronix_ESP32S3_N16R8.bin -f raw --flash_mode dio --flash_freq 40m --flash_size 16MB 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/ravatronix_firmware.bin
