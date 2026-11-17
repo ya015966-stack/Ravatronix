@@ -39,11 +39,13 @@ def test_apn_is_not_assumed_for_an_unconfirmed_sim_operator():
     assert re.search(r'default ""', block.group(1))
 
 
-def test_camera_is_enabled_for_initial_capture_while_unverified_modules_stay_off():
+def test_camera_and_confirmed_audio_are_enabled_while_cellular_transport_stays_gated():
     defaults = (ROOT / "sdkconfig.defaults").read_text()
     assert "CONFIG_RAVA_ENABLE_CAMERA=y" in defaults
     assert "CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y" in defaults
-    assert "CONFIG_RAVA_ENABLE_AUDIO=n" in defaults
+    assert "CONFIG_RAVA_ENABLE_AUDIO=y" in defaults
+    assert "CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=y" in defaults
+    assert "CONFIG_RAVA_MIC_FORMAT_CONFIRMED=y" in defaults
     assert "CONFIG_RAVA_ENABLE_CELLULAR=n" in defaults
 
 
