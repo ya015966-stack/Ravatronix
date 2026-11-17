@@ -2,6 +2,12 @@ name: Build Ravatronix ESP-IDF firmware
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/rava-ai-voice-unified-firmware
+    paths:
+      - ".github/workflows/build-ravatronix-idf.yml"
+      - "firmware/esp32_s3/**"
 
 permissions:
   contents: read
