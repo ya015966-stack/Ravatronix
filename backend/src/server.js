@@ -46,7 +46,8 @@ function readLimitedBody(request, limit) {
 
 export function createRavaServer({
   deviceToken = process.env.RAVA_DEVICE_TOKEN,
-  aiProvider = createOpenAICompatibleProvider()
+  aiProvider = createOpenAICompatibleProvider(),
+  speechProvider = null
 } = {}) {
   if (!deviceToken) {
     throw new Error("RAVA_DEVICE_TOKEN is required; refusing to start without device authentication.");
