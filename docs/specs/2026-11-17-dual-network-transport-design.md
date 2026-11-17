@@ -174,6 +174,20 @@ A successful CI build is not a substitute for these physical checks. Do not flas
 - SIMCom A7670X product page and official A76XX manuals/application notes: https://www.simcom.com/product/A7670X.html
 - SIMCom A76XX technical file index: https://www.simcom.com/technical_files-p92.html
 
+## A7670E payload-size and TLS findings
+
+The A76XX Series AT Command Manual V1.09 describes two possible data paths that must be capability-probed on the installed A7670E firmware:
+
+- Direct `AT+HTTPDATA` upload has a documented body-size range of 1 to 153,600 bytes. This is smaller than an 8-second PCM16 mono 16 kHz WAV request (about 256 KiB plus the WAV header).
+- The manual documents `AT+HTTPPOSTFILE` and `AT+HTTPREADFILE` for file-based HTTP(S) request/response handling, plus `AT+CFTRANRX` and `AT+CFTRANTX` for transferring files between the host and modem EFS. UART file transfer is documented as potentially supporting larger files, but the manual warns that practical size and pacing depend on system resources.
+- The manual notes a 64 KiB protocol-stack/cache constraint for large HTTP responses in the ordinary read mode; the file-based response path is therefore preferred for large WAV responses if the installed firmware supports it.
+- If the file-based commands are unavailable or fail capability tests, the modem adapter must expose its smaller request/response limits and the route selector must reject payloads that exceed them. It must not truncate or silently retry over another transport after an ambiguous POST.
+- SIMCom's SSL configuration distinguishes no authentication from server authentication. Server authentication requires a root CA file; SNI and modem time/certificate validity must also be configured and verified. TLS verification must never be disabled as a workaround.
+
+Preferred modem sequence, only after runtime capability confirmation: transfer request WAV to modem EFS, configure HTTPS URL/content/custom Authorization header and verified SSL context, POST the EFS file, save response to EFS, transfer response bytes back to ESP32, validate WAV, then remove temporary files. Direct HTTPDATA/HTTPREAD is a bounded fallback only when the exact request/response sizes fit the modem's verified limits.
+
+References: SIMCom A76XX AT Command Manual V1.09 sections 13, 16 and 19; official A7670X product downloads page.
+
 ## Open verification items
 
 These are hardware/firmware facts to establish during staged verification, not reasons to guess:
