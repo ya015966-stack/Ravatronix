@@ -6,7 +6,6 @@
 #include "esp_system.h"
 #include "esp_psram.h"
 #include "esp_heap_caps.h"
-#include <math.h>
 
 #if CONFIG_RAVA_ENABLE_CAMERA && CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED
 #include "camera_service.h"
@@ -39,29 +38,6 @@ static void camera_monitor_task(void *arg)
 }
 #endif
 
-#if CONFIG_RAVA_ENABLE_AUDIO && CONFIG_RAVA_AUDIO_WIRING_CONFIRMED && CONFIG_RAVA_MIC_FORMAT_CONFIRMED
-static void audio_monitor_task(void *arg)
-{
-    (void)arg;
-    int32_t samples[256];
-    while (1) {
-        size_t count = 0;
-        esp_err_t err = audio_service_read_pcm(samples, 256, &count, 500);
-        if (err == ESP_OK && count > 0) {
-            int64_t sum = 0;
-            for (size_t i = 0; i < count; ++i) {
-                int32_t sample = samples[i] >> 14;
-                sum += (int64_t)sample * sample;
-            }
-            ESP_LOGI("rava_audio", "mic rms=%lld samples=%u",
-                     (long long)sqrt((double)sum / count), (unsigned)count);
-        } else if (err != ESP_ERR_TIMEOUT) {
-            ESP_LOGW("rava_audio", "mic read: %s", esp_err_to_name(err));
-        }
-        vTaskDelay(pdMS_TO_TICKS(250));
-    }
-}
-#endif
 
 void app_main(void)
 {
@@ -87,9 +63,7 @@ void app_main(void)
 #if CONFIG_RAVA_ENABLE_AUDIO && CONFIG_RAVA_AUDIO_WIRING_CONFIRMED && CONFIG_RAVA_MIC_FORMAT_CONFIRMED
     esp_err_t audio_err = audio_service_init();
     if (audio_err == ESP_OK) {
-        if (xTaskCreate(audio_monitor_task, "audio_monitor", 4096, NULL, 5, NULL) != pdPASS) {
-            ESP_LOGE(TAG, "audio monitor task creation failed");
-        }
+        ESP_LOGI(TAG, "I2S audio ready; microphone is reserved for explicit voice-turn requests");
     } else {
         ESP_LOGE(TAG, "audio service unavailable: %s", esp_err_to_name(audio_err));
     }
