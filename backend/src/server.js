@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createOpenAICompatibleProvider } from "./ai-provider.js";
-import { processVoiceTurn, VoiceRequestError } from "./voice-service.js";
+import { inspectPcm16Mono16kWav, processVoiceTurn, VoiceRequestError } from "./voice-service.js";
 import { WebSocketServer, WebSocket } from "ws";
 
 const MAX_CAMERA_BYTES = 2 * 1024 * 1024;
@@ -69,12 +69,6 @@ export function createRavaServer({
       if (!String(request.headers["content-type"] ?? "").toLowerCase().startsWith("audio/wav")) {
         return sendJson(response, 415, { error: "content_type_must_be_audio_wav" });
       }
-      if (!speechProvider || typeof speechProvider.transcribeAudio !== "function" ||
-          typeof speechProvider.synthesizeSpeech !== "function" ||
-          !aiProvider || typeof aiProvider.completeChat !== "function") {
-        return sendJson(response, 503, { error: "voice_provider_unavailable" });
-      }
-
       let audio;
       try {
         audio = await readLimitedBody(request, MAX_AUDIO_BYTES);
@@ -82,6 +76,15 @@ export function createRavaServer({
         if (error.statusCode === 413) return sendJson(response, 413, { error: "audio_too_large" });
         if (!response.headersSent && !response.destroyed) return sendJson(response, 400, { error: "audio_upload_failed" });
         return;
+      }
+
+      if (!inspectPcm16Mono16kWav(audio)) {
+        return sendJson(response, 400, { error: "invalid_wav_format" });
+      }
+      if (!speechProvider || typeof speechProvider.transcribeAudio !== "function" ||
+          typeof speechProvider.synthesizeSpeech !== "function" ||
+          !aiProvider || typeof aiProvider.completeChat !== "function") {
+        return sendJson(response, 503, { error: "voice_provider_unavailable" });
       }
 
       try {
