@@ -21,16 +21,16 @@ int main(void) {
 
     assert(modem_at_parser_feed(&parser, 'O', line, sizeof(line)) == MODEM_AT_EVENT_NONE);
     assert(modem_at_parser_feed(&parser, 'K', line, sizeof(line)) == MODEM_AT_EVENT_NONE);
-    assert(modem_at_parser_feed(&parser, '\\r', line, sizeof(line)) == MODEM_AT_EVENT_LINE);
+    assert(modem_at_parser_feed(&parser, '\r', line, sizeof(line)) == MODEM_AT_EVENT_LINE);
     assert(strcmp(line, "OK") == 0);
-    assert(modem_at_parser_feed(&parser, '\\n', line, sizeof(line)) == MODEM_AT_EVENT_NONE);
+    assert(modem_at_parser_feed(&parser, '\n', line, sizeof(line)) == MODEM_AT_EVENT_NONE);
 
     assert(modem_at_parser_feed(&parser, '>', line, sizeof(line)) == MODEM_AT_EVENT_PROMPT);
     assert(modem_at_parser_feed(&parser, ' ', line, sizeof(line)) == MODEM_AT_EVENT_NONE);
 
-    const char *urc = "+HTTPACTION: 1,200,44\\r\\n";
+    const char *urc = "+HTTPACTION: 1,200,44\r\n";
     modem_at_event_t event = MODEM_AT_EVENT_NONE;
-    for (size_t i = 0; urc[i] != '\\0'; ++i) {
+    for (size_t i = 0; urc[i] != '\0'; ++i) {
         event = modem_at_parser_feed(&parser, (unsigned char)urc[i], line, sizeof(line));
     }
     assert(event == MODEM_AT_EVENT_LINE);
