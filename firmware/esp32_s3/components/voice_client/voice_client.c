@@ -1,8 +1,7 @@
 #include "voice_client.h"
 #include "audio_service.h"
 #include "wav_codec.h"
-#include "esp_crt_bundle.h"
-#include "esp_http_client.h"
+#include "network_transport.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "esp_log.h"
@@ -20,17 +19,6 @@
 #define MIC_BLOCK_SAMPLES 256U
 #define HTTP_READ_CHUNK 1024U
 #define MAX_AUTH_HEADER 384U
-
-static bool write_all(esp_http_client_handle_t client,const uint8_t *data,size_t length)
-{
-    size_t offset=0;
-    while(offset<length) {
-        int written=esp_http_client_write(client,(const char *)data+offset,(int)(length-offset));
-        if(written<=0) return false;
-        offset+=(size_t)written;
-    }
-    return true;
-}
 
 static esp_err_t capture_pcm16(uint8_t *wav,size_t capacity,const voice_client_config_t *config,uint32_t *captured)
 {
@@ -110,30 +98,30 @@ esp_err_t voice_client_turn(const voice_client_config_t *config,voice_client_res
     int auth_len=snprintf(authorization,sizeof(authorization),"Bearer %s",config->bearer_token);
     if(auth_len<0 || (size_t)auth_len>=sizeof(authorization)) { err=ESP_ERR_INVALID_SIZE; goto cleanup; }
 
-    esp_http_client_config_t http_config={
-        .url=config->https_url,
-        .method=HTTP_METHOD_POST,
-        .timeout_ms=(int)config->request_timeout_ms,
-        .crt_bundle_attach=esp_crt_bundle_attach,
-        .buffer_size=HTTP_READ_CHUNK,
-        .buffer_size_tx=HTTP_READ_CHUNK,
-        .keep_alive_enable=false
-    };
-    esp_http_client_handle_t client=esp_http_client_init(&http_config);
-    if(!client) { err=ESP_ERR_NO_MEM; goto cleanup; }
+    network_transport_handle_t transport=NULL;
+    err=network_transport_open(config->https_url,config->request_timeout_ms,
+                               (uint32_t)request_bytes,"audio/wav",authorization,&transport);
+    if(err!=ESP_OK) goto cleanup;
 
-    err=esp_http_client_set_header(client,"Content-Type","audio/wav");
-    if(err==ESP_OK) err=esp_http_client_set_header(client,"Authorization",authorization);
-    if(err==ESP_OK) err=esp_http_client_open(client,(int)request_bytes);
-    if(err==ESP_OK && !write_all(client,request_wav,request_bytes)) err=ESP_FAIL;
+    size_t request_offset=0;
+    while(request_offset<request_bytes) {
+        size_t written=0;
+        err=network_transport_write(transport,request_wav+request_offset,
+                                    request_bytes-request_offset,&written);
+        if(err!=ESP_OK || written==0 || written>request_bytes-request_offset) {
+            if(err==ESP_OK) err=ESP_FAIL;
+            break;
+        }
+        request_offset+=written;
+    }
+
+    int64_t content_length=-1;
     if(err==ESP_OK) {
-        (void)esp_http_client_fetch_headers(client);
-        result->http_status=esp_http_client_get_status_code(client);
-        if(result->http_status!=200) err=ESP_FAIL;
+        err=network_transport_finish(transport,&result->http_status,&content_length);
+        if(err==ESP_OK && result->http_status!=200) err=ESP_FAIL;
     }
 
     if(err==ESP_OK) {
-        int64_t content_length=esp_http_client_get_content_length(client);
         if(content_length>(int64_t)MAX_RESPONSE_WAV_BYTES || content_length==0) {
             err=ESP_ERR_INVALID_SIZE;
         } else {
@@ -141,19 +129,20 @@ esp_err_t voice_client_turn(const voice_client_config_t *config,voice_client_res
             while(received<MAX_RESPONSE_WAV_BYTES &&
                   (content_length<0 || received<(size_t)content_length)) {
                 size_t room=MAX_RESPONSE_WAV_BYTES-received;
-                int ask=room>HTTP_READ_CHUNK ? HTTP_READ_CHUNK : (int)room;
-                int got=esp_http_client_read(client,(char *)response_wav+received,ask);
-                if(got<0) { err=ESP_FAIL; break; }
+                size_t ask=room>HTTP_READ_CHUNK ? HTTP_READ_CHUNK : room;
+                size_t got=0;
+                err=network_transport_read(transport,response_wav+received,ask,&got);
+                if(err!=ESP_OK) break;
                 if(got==0) break;
-                received+=(size_t)got;
+                if(got>ask) { err=ESP_ERR_INVALID_SIZE; break; }
+                received+=got;
             }
             if(err==ESP_OK && (received==0 ||
                (content_length>=0 && received!=(size_t)content_length))) err=ESP_ERR_INVALID_SIZE;
             if(err==ESP_OK) err=play_response(response_wav,received,&result->response_audio_bytes);
         }
     }
-    esp_http_client_close(client);
-    esp_http_client_cleanup(client);
+    network_transport_close(transport);
 
 cleanup:
     heap_caps_free(request_wav);
