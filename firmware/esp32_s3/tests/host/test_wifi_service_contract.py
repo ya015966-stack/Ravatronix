@@ -17,6 +17,8 @@ def test_wifi_service_uses_sta_nvs_and_temporary_provisioning_portal():
     assert "nvs_get_str" in source
     assert "nvs_set_str" in source
     assert "httpd_start" in source
+    assert "WIFI_PROVISIONING_TIMEOUT_MS" in source
+    assert "while (received_total < request->content_len)" in source
     assert '"/config"' in source
     assert "esp_wifi_disconnect" in source
     assert "WIFI_EVENT_STA_DISCONNECTED" in source
