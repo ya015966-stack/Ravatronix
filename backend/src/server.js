@@ -205,7 +205,7 @@ export function createRavaServer({
     }, AUTH_TIMEOUT_MS);
     authTimer.unref();
 
-    socket.on("message", (raw) => {
+    socket.on("message", async (raw) => {
       let message;
       try {
         message = JSON.parse(raw.toString());
@@ -227,12 +227,47 @@ export function createRavaServer({
       }
 
       if (message?.type === "chat" && typeof message.message_id === "string" &&
-          typeof message.text === "string") {
-        socket.send(JSON.stringify({
-          type: "chat_response",
-          message_id: message.message_id,
-          text: "پیام دریافت شد؛ اتصال زنده است."
-        }));
+          typeof message.text === "string" && message.text.trim() && message.text.length <= 4_000) {
+        if (!aiProvider || typeof aiProvider.completeChat !== "function") {
+          socket.send(JSON.stringify({
+            type: "error",
+            message_id: message.message_id,
+            error: "ai_provider_unavailable"
+          }));
+          return;
+        }
+
+        try {
+          const reply = await aiProvider.completeChat({
+            messages: [
+              { role: "system", content: "تو RAVA، دستیار هوشمند ربات Ravatronix هستی. به‌طور پیش‌فرض فارسی، روشن و دقیق پاسخ بده. ادعای انجام عملیاتی را که واقعاً انجام نشده مطرح نکن." },
+              { role: "user", content: message.text.trim() }
+            ]
+          });
+          if (socket.readyState === WebSocket.OPEN) {
+            if (typeof reply !== "string" || !reply.trim()) {
+              socket.send(JSON.stringify({
+                type: "error",
+                message_id: message.message_id,
+                error: "ai_provider_invalid_response"
+              }));
+            } else {
+              socket.send(JSON.stringify({
+                type: "chat_response",
+                message_id: message.message_id,
+                text: reply.trim()
+              }));
+            }
+          }
+        } catch {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: "error",
+              message_id: message.message_id,
+              error: "ai_provider_failed"
+            }));
+          }
+        }
         return;
       }
 
