@@ -44,7 +44,6 @@
 ### Task 2: Add a bounded Persian speech round-trip service
 
 **Files:**
-- Create: `backend/src/audio-provider.js`
 - Create: `backend/src/voice-service.js`
 - Modify: `backend/src/server.js`
 - Create: `backend/test/voice.test.js`
@@ -53,7 +52,7 @@
 **Interfaces:**
 - `transcribeAudio({ audio, mimeType }) -> Promise<string>`
 - `synthesizeSpeech({ text }) -> Promise<Buffer>`
-- `POST /api/voice/turn`: authenticated multipart WAV upload; returns `audio/wav` response and safe request metadata in headers.
+- `POST /api/voice/turn`: authenticated raw WAV upload; returns a WAV audio response.
 - Input contract: WAV PCM16, mono, 16 kHz, maximum 8 seconds and 512 KiB upload.
 - Output contract: WAV PCM16, mono, 16 kHz.
 
@@ -86,3 +85,12 @@
 - The production STT and TTS vendor/model, region, pricing, and data-retention terms must be selected after comparing Persian quality and availability. The implementation should keep these adapters configurable and must not assume a paid provider is approved.
 - The exact WAV byte layout produced by the currently working microphone firmware must be verified from an actual capture before enabling the voice endpoint on the live robot.
 - Automatic Wi-Fi↔4G failover behavior is owned by the existing network layer; this feature must use the currently active connection and must not change modem routing until its behavior is verified.
+
+
+## Implementation progress (2026-11-17)
+
+- Task 1 implemented on this branch: authenticated `POST /api/ai/chat`, injectable AI provider, and configurable OpenAI-compatible chat adapter.
+- Task 2 orchestration implemented: authenticated raw WAV endpoint, WAV format/duration checks, STT→AI→TTS provider interface, and no-partial-audio failure behavior.
+- Backend CI run `44066141533` completed successfully with 17 tests passing and 0 failures.
+- Production speech-provider adapter is intentionally not configured yet. Provider/model selection is an explicit decision because the currently documented OpenAI Speech API TTS models are scheduled for shutdown on 2027-01-06; a new integration needs a supported replacement path or another provider.
+- No API key has been added, no server has been deployed, and no firmware has been flashed.
