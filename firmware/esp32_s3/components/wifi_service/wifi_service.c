@@ -13,6 +13,8 @@
 #include "esp_wifi.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define TAG "rava_wifi"
 #define WIFI_NVS_NAMESPACE "rava_wifi"
@@ -21,6 +23,7 @@
 #define WIFI_SSID_MAX 32U
 #define WIFI_PASSWORD_MAX 64U
 #define WIFI_SETUP_BODY_MAX 256U
+#define WIFI_PROVISIONING_TIMEOUT_MS (15U * 60U * 1000U)
 
 static esp_netif_t *s_sta_netif;
 static esp_netif_t *s_ap_netif;
@@ -29,7 +32,7 @@ static volatile wifi_service_state_t s_state = WIFI_SERVICE_STATE_STOPPED;
 static volatile bool s_ready;
 static bool s_started;
 static bool s_have_credentials;
-static bool s_provisioning;
+static volatile bool s_provisioning;
 
 static esp_err_t start_setup_server(void);
 
@@ -66,15 +69,21 @@ static bool load_credentials(char *ssid, size_t ssid_capacity,
            password_length <= password_capacity;
 }
 
-static void configure_station(const char *ssid, const char *password)
+static esp_err_t configure_station(const char *ssid, const char *password)
 {
     wifi_config_t config = {0};
-    strlcpy((char *)config.sta.ssid, ssid, sizeof(config.sta.ssid));
-    strlcpy((char *)config.sta.password, password, sizeof(config.sta.password));
+    size_t ssid_length = strlen(ssid);
+    size_t password_length = strlen(password);
+    if (ssid_length == 0U || ssid_length > sizeof(config.sta.ssid) ||
+        password_length > sizeof(config.sta.password)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    memcpy(config.sta.ssid, ssid, ssid_length);
+    memcpy(config.sta.password, password, password_length);
     config.sta.threshold.authmode = WIFI_AUTH_OPEN;
     config.sta.pmf_cfg.capable = true;
     config.sta.pmf_cfg.required = false;
-    (void)esp_wifi_set_config(WIFI_IF_STA, &config);
+    return esp_wifi_set_config(WIFI_IF_STA, &config);
 }
 
 static esp_err_t setup_root_handler(httpd_req_t *request)
@@ -102,10 +111,15 @@ static esp_err_t setup_config_handler(httpd_req_t *request)
     }
 
     char body[WIFI_SETUP_BODY_MAX + 1U] = {0};
-    int received = httpd_req_recv(request, body, request->content_len);
-    if (received <= 0 || (size_t)received != request->content_len) {
-        httpd_resp_send_err(request, HTTPD_400_BAD_REQUEST, "incomplete body");
-        return ESP_FAIL;
+    size_t received_total = 0U;
+    while (received_total < request->content_len) {
+        int received = httpd_req_recv(request, body + received_total,
+                                      request->content_len - received_total);
+        if (received <= 0) {
+            httpd_resp_send_err(request, HTTPD_400_BAD_REQUEST, "incomplete body");
+            return ESP_FAIL;
+        }
+        received_total += (size_t)received;
     }
 
     cJSON *json = cJSON_Parse(body);
@@ -164,6 +178,23 @@ static esp_err_t start_setup_server(void)
     return err;
 }
 
+static void provisioning_timeout_task(void *argument)
+{
+    (void)argument;
+    vTaskDelay(pdMS_TO_TICKS(WIFI_PROVISIONING_TIMEOUT_MS));
+    if (s_provisioning) {
+        s_provisioning = false;
+        if (s_httpd != NULL) {
+            (void)httpd_stop(s_httpd);
+            s_httpd = NULL;
+        }
+        (void)esp_wifi_stop();
+        s_state = WIFI_SERVICE_STATE_FAILED;
+        ESP_LOGW(TAG, "Wi-Fi provisioning window expired; restart to reopen setup");
+    }
+    vTaskDelete(NULL);
+}
+
 static esp_err_t start_provisioning(void)
 {
     wifi_config_t ap = {0};
@@ -195,6 +226,14 @@ static esp_err_t start_provisioning(void)
     if (err == ESP_OK) {
         s_provisioning = true;
         s_state = WIFI_SERVICE_STATE_PROVISIONING;
+        if (xTaskCreate(provisioning_timeout_task, "wifi_setup_timeout",
+                        3072, NULL, 2, NULL) != pdPASS) {
+            s_provisioning = false;
+            (void)httpd_stop(s_httpd);
+            s_httpd = NULL;
+            (void)esp_wifi_stop();
+            return ESP_ERR_NO_MEM;
+        }
         ESP_LOGW(TAG, "temporary setup AP: RAVA-SETUP; passphrase: %s; open http://192.168.4.1",
                  setup_password);
     }
@@ -247,7 +286,8 @@ esp_err_t wifi_service_set_credentials(const char *ssid, const char *password)
     s_have_credentials = true;
     s_ready = false;
     s_state = WIFI_SERVICE_STATE_CONNECTING;
-    configure_station(ssid, password);
+    err = configure_station(ssid, password);
+    if (err != ESP_OK) return err;
     err = esp_wifi_disconnect();
     if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_CONNECT) return err;
     return esp_wifi_connect();
@@ -286,8 +326,8 @@ esp_err_t wifi_service_start(void)
                                           password, sizeof(password));
 
     if (s_have_credentials) {
-        configure_station(ssid, password);
-        err = esp_wifi_set_mode(WIFI_MODE_STA);
+        err = configure_station(ssid, password);
+        if (err == ESP_OK) err = esp_wifi_set_mode(WIFI_MODE_STA);
         if (err == ESP_OK) err = esp_wifi_start();
         if (err == ESP_OK) {
             s_state = WIFI_SERVICE_STATE_CONNECTING;
