@@ -6,6 +6,7 @@
 #include "esp_system.h"
 #include "esp_psram.h"
 #include "esp_heap_caps.h"
+#include "wifi_service.h"
 
 #if CONFIG_RAVA_ENABLE_CAMERA && CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED
 #include "camera_service.h"
@@ -37,7 +38,6 @@ static void camera_monitor_task(void *arg)
     vTaskDelete(NULL);
 }
 #endif
-
 
 void app_main(void)
 {
@@ -73,6 +73,12 @@ void app_main(void)
     ESP_LOGI(TAG, "audio service disabled by default configuration");
 #endif
 
+    /* Wi-Fi is independent of camera/audio and may start in provisioning mode. */
+    esp_err_t wifi_err = wifi_service_start();
+    if (wifi_err != ESP_OK) {
+        ESP_LOGW(TAG, "Wi-Fi service unavailable: %s", esp_err_to_name(wifi_err));
+    }
+
 #if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED
     esp_err_t net_err = network_service_start();
     if (net_err != ESP_OK) {
@@ -81,13 +87,15 @@ void app_main(void)
 #elif CONFIG_RAVA_ENABLE_CELLULAR
     ESP_LOGW(TAG, "cellular requested but carrier power/UART electrical gate is closed");
 #else
-    ESP_LOGI(TAG, "A7670E service disabled by default configuration");
+    ESP_LOGI(TAG, "A7670E AT service remains gated pending UART and modem capability verification");
 #endif
 
     while (1) {
-        ESP_LOGI(TAG, "heartbeat heap=%u psram_free=%u",
+        ESP_LOGI(TAG, "heartbeat heap=%u psram_free=%u wifi_state=%d wifi_ready=%d",
                  (unsigned)esp_get_free_heap_size(),
-                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+                 (int)wifi_service_get_state(),
+                 (int)wifi_service_is_ready());
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
