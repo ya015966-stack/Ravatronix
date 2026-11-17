@@ -1,11 +1,13 @@
 import { createServer } from "node:http";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createOpenAICompatibleProvider } from "./ai-provider.js";
+import { processVoiceTurn, VoiceRequestError } from "./voice-service.js";
 import { WebSocketServer, WebSocket } from "ws";
 
 const MAX_CAMERA_BYTES = 2 * 1024 * 1024;
 const MAX_WS_BYTES = 16 * 1024;
 const MAX_CHAT_BYTES = 8 * 1024;
+const MAX_AUDIO_BYTES = 512 * 1024;
 const AUTH_TIMEOUT_MS = 5_000;
 
 function safeEqual(left, right) {
@@ -55,6 +57,47 @@ export function createRavaServer({
 
     if (request.method === "GET" && url.pathname === "/health") {
       return sendJson(response, 200, { status: "ok", service: "ravatronix-backend" });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/voice/turn") {
+      const authorization = request.headers.authorization ?? "";
+      const suppliedToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+      if (!safeEqual(suppliedToken, deviceToken)) {
+        return sendJson(response, 401, { error: "unauthorized" });
+      }
+      if (!String(request.headers["content-type"] ?? "").toLowerCase().startsWith("audio/wav")) {
+        return sendJson(response, 415, { error: "content_type_must_be_audio_wav" });
+      }
+      if (!speechProvider || typeof speechProvider.transcribeAudio !== "function" ||
+          typeof speechProvider.synthesizeSpeech !== "function" ||
+          !aiProvider || typeof aiProvider.completeChat !== "function") {
+        return sendJson(response, 503, { error: "voice_provider_unavailable" });
+      }
+
+      let audio;
+      try {
+        audio = await readLimitedBody(request, MAX_AUDIO_BYTES);
+      } catch (error) {
+        if (error.statusCode === 413) return sendJson(response, 413, { error: "audio_too_large" });
+        if (!response.headersSent && !response.destroyed) return sendJson(response, 400, { error: "audio_upload_failed" });
+        return;
+      }
+
+      try {
+        const responseAudio = await processVoiceTurn({ audio, speechProvider, aiProvider });
+        response.writeHead(200, {
+          "content-type": "audio/wav",
+          "content-length": responseAudio.length,
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff"
+        });
+        return response.end(responseAudio);
+      } catch (error) {
+        if (error instanceof VoiceRequestError) {
+          return sendJson(response, 400, { error: error.code });
+        }
+        return sendJson(response, 502, { error: "voice_processing_failed" });
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/api/ai/chat") {
