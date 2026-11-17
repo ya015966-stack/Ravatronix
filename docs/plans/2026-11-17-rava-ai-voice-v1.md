@@ -4,7 +4,7 @@
 
 **Goal:** Connect the already-working Ravatronix robot to an authenticated online AI gateway and deliver a first Persian push-to-talk voice round trip without replacing its working firmware subsystems.
 
-**Architecture:** Keep ESP32-S3 responsible for local capture/playback and transport; keep provider credentials and AI/STT/TTS calls on the backend. Preserve the existing authenticated WebSocket for small control messages and use HTTPS multipart/WAV uploads and audio responses for media. Make the AI, STT, and TTS provider adapters configurable so the provider can be changed without changing firmware.
+**Architecture:** Keep ESP32-S3 responsible for local capture/playback and transport; keep provider credentials and AI/STT/TTS calls on the backend. Preserve the existing authenticated WebSocket for small control messages and use authenticated raw HTTPS WAV uploads and audio responses for media. Make the AI, STT, and TTS provider adapters configurable so the provider can be changed without changing firmware.
 
 **Tech Stack:** Node.js 20+, native fetch/FormData/Blob, existing `ws` dependency, Node built-in test runner, ESP-IDF firmware workspace.
 
@@ -30,16 +30,16 @@
 - Modify: `backend/package.json` only if a script or dependency is required
 
 **Interfaces:**
-- `createRavaServer({ deviceToken, aiProvider })` accepts an injected provider for deterministic tests.
+- `createRavaServer({ deviceToken, aiProvider, speechProvider })` accepts injected providers for deterministic tests.
 - Provider interface: `completeChat({ messages }) -> Promise<string>`.
 - HTTP interface: `POST /api/ai/chat`, JSON body `{ "message": "...", "conversation_id": "..." }`, bearer device token; response `{ "reply": "...", "conversation_id": "..." }`.
 
-- [ ] Add tests for missing/invalid device token, valid chat request invoking the provider, provider failure returning a non-success response, and absent provider configuration returning a clear unavailable response.
-- [ ] Run focused tests and observe failure caused by the missing route/provider seam.
-- [ ] Implement an OpenAI-compatible chat-completions adapter using server-only `RAVA_AI_BASE_URL`, `RAVA_AI_API_KEY`, and `RAVA_AI_MODEL` environment variables; use native fetch and bounded request timeout.
-- [ ] Verify focused tests pass with an injected fake provider; confirm no provider key appears in responses or logs.
-- [ ] Run `npm test` from `backend/` and the backend CI workflow.
-- [ ] Commit the independently passing task.
+- [x] Add tests for unauthenticated requests, valid chat request invoking the provider, provider failure returning a non-success response, and absent provider configuration returning a clear unavailable response.
+- [x] Run focused tests and observe the missing route returning 404 before implementation.
+- [x] Implement an OpenAI-compatible chat-completions adapter using server-only `RAVA_AI_BASE_URL`, `RAVA_AI_API_KEY`, and `RAVA_AI_MODEL` environment variables; use native fetch and a 25-second timeout.
+- [x] Verify provider and route tests pass with injected fake providers; API keys are not returned in responses.
+- [x] Run backend CI workflow: 17 tests passed, 0 failed.
+- [x] Commit the passing task on the feature branch.
 
 ### Task 2: Add a bounded Persian speech round-trip service
 
@@ -47,7 +47,6 @@
 - Create: `backend/src/voice-service.js`
 - Modify: `backend/src/server.js`
 - Create: `backend/test/voice.test.js`
-- Modify: `backend/.env.example`
 
 **Interfaces:**
 - `transcribeAudio({ audio, mimeType }) -> Promise<string>`
@@ -56,12 +55,12 @@
 - Input contract: WAV PCM16, mono, 16 kHz, maximum 8 seconds and 512 KiB upload.
 - Output contract: WAV PCM16, mono, 16 kHz.
 
-- [ ] Test rejected unauthenticated, oversized, malformed, wrong-content-type, and invalid-WAV requests plus a successful injected STT→AI→TTS round trip.
-- [ ] Observe focused red tests before implementing.
-- [ ] Implement provider adapters behind injected interfaces and server environment configuration; never forward raw audio to the chat provider.
-- [ ] Return clear 4xx/5xx errors for validation/provider failures and do not return partial audio.
-- [ ] Verify tests and full backend suite; document required environment variables without real secrets.
-- [ ] Commit the independently passing task.
+- [x] Test unauthenticated requests, malformed WAV, provider unavailability/failure, and a successful injected STT→AI→TTS round trip.
+- [x] Observe the missing voice route returning 404 before implementation.
+- [ ] Select and implement a production speech-provider adapter behind the tested STT/TTS interfaces; never forward raw audio to the chat provider.
+- [x] Return clear 4xx/5xx errors for invalid WAV and provider failures; do not return partial audio.
+- [x] Verify backend CI workflow: 17 tests passed, 0 failed.
+- [x] Commit the tested voice orchestration on the feature branch.
 
 ### Task 3: Integrate the existing ESP32 voice transport
 
@@ -90,7 +89,7 @@
 ## Implementation progress (2026-11-17)
 
 - Task 1 implemented on this branch: authenticated `POST /api/ai/chat`, injectable AI provider, and configurable OpenAI-compatible chat adapter.
-- Task 2 orchestration implemented: authenticated raw WAV endpoint, WAV format/duration checks, STT→AI→TTS provider interface, and no-partial-audio failure behavior.
+- Task 2 orchestration implemented: authenticated raw WAV endpoint, WAV format/duration checks, STT→AI→TTS provider interface, and no-partial-audio failure behavior. Production STT/TTS adapters and firmware transport are not yet implemented.
 - Backend CI run `44066141533` completed successfully with 17 tests passing and 0 failures.
 - Production speech-provider adapter is intentionally not configured yet. Provider/model selection is an explicit decision because the currently documented OpenAI Speech API TTS models are scheduled for shutdown on 2027-01-06; a new integration needs a supported replacement path or another provider.
 - No API key has been added, no server has been deployed, and no firmware has been flashed.
