@@ -1,69 +1,95 @@
-# Ravatronix backend (phase 1)
+# Ravatronix backend — RAVA AI Voice v1
 
-Node.js service for the first authenticated connection between RAVA and the cloud.
+Node.js gateway for authenticated RAVA device requests. The gateway keeps provider credentials on the server; do not place provider keys in ESP32 firmware, Android builds, or Git.
 
 ## Included
 
-- `GET /health`: public service health check.
-- `WSS /ws`: authenticated device connection and realtime chat acknowledgement.
-- `POST /api/camera`: authenticated JPEG upload (up to 2 MiB). This phase validates and acknowledges the image; it does not persist or forward it.
-- Device authentication uses the first WebSocket JSON message, not a URL query parameter, so the secret is not placed in request URLs.
+- `GET /health`: public health check.
+- `POST /api/ai/chat`: authenticated text request to the configured OpenAI-compatible chat provider.
+- `POST /api/voice/turn`: authenticated audio turn: Persian speech recognition (STT) → AI response → speech synthesis (TTS). The request and response use WAV over HTTPS.
+- `POST /api/camera`: authenticated JPEG validation/acknowledgement only; images are not yet sent to a vision model or persisted.
+- `WSS /ws`: authenticated device signaling. The current WebSocket `chat` message is a transport acknowledgement only; it is not the AI chat endpoint.
 
-## Local run
+## Runtime requirements
 
-Requires Node.js 20 or newer.
+- Node.js 20+
+- Install: `npm install`
+- Test: `npm test`
+- Start: `npm start`
+
+## Required server environment
+
+Set these values in the backend host's secret/environment settings. Never commit real credentials.
+
+| Variable | Purpose |
+|---|---|
+| `RAVA_DEVICE_TOKEN` | Long random device bearer token |
+| `RAVA_AI_BASE_URL` | OpenAI-compatible API base URL; defaults to `https://api.openai.com/v1` |
+| `RAVA_AI_API_KEY` | Provider key, server-side only |
+| `RAVA_AI_MODEL` | Model identifier supported by the configured provider |
+| `AZURE_SPEECH_KEY` | Azure Speech resource key |
+| `AZURE_SPEECH_REGION` | Azure Speech resource region |
+| `AZURE_SPEECH_LOCALE` | Optional; defaults to `fa-IR` |
+| `AZURE_SPEECH_VOICE` | Optional; defaults to `fa-IR-DilaraNeural` |
+| `PORT` | Hosting platform port; defaults to `10000` |
+
+The text chat provider is unavailable until both `RAVA_AI_API_KEY` and `RAVA_AI_MODEL` are configured. Voice is unavailable until the AI provider and Azure Speech key/region are configured.
+
+## Voice contract
+
+Request:
+
+- `POST /api/voice/turn`
+- `Authorization: Bearer YOUR_DEVICE_TOKEN`
+- `Content-Type: audio/wav`
+- WAV encoding: PCM signed 16-bit little-endian, mono, 16 kHz
+- Maximum input duration: 8 seconds
+- Maximum request body: 512 KiB
+
+Response:
+
+- Success: `200 audio/wav`, PCM16 mono 16 kHz WAV audio
+- `400`: invalid WAV format or speech request
+- `401`: missing/invalid device token
+- `413`: audio body exceeds the configured limit
+- `415`: content type is not `audio/wav`
+- `502`: an upstream AI or speech provider failed
+- `503`: required provider configuration is unavailable
+
+Example using a WAV file:
 
 ```sh
-npm install
-RAVA_DEVICE_TOKEN='your-long-random-secret' npm start
-npm test
+curl --fail-with-body \
+  -X POST "https://YOUR_BACKEND_HOST/api/voice/turn" \
+  -H "Authorization: Bearer YOUR_DEVICE_TOKEN" \
+  -H "Content-Type: audio/wav" \
+  --data-binary "@input.wav" \
+  --output response.wav
 ```
 
-## WebSocket handshake
+Do not put the token in a URL or log request authorization headers. Use HTTPS only.
 
-Connect to `wss://YOUR-SERVICE.onrender.com/ws`, then send:
+## Text chat contract
+
+Send JSON to `POST /api/ai/chat` with the same device bearer token:
 
 ```json
-{"type":"auth","role":"device","token":"YOUR_DEVICE_TOKEN"}
+{"message":"سلام راوا","conversation_id":"optional-session-id"}
 ```
 
-The server replies with `auth_ok`. A device can then send:
+The response contains `reply` and `conversation_id`. The current implementation sends the supplied message to the configured chat provider; conversation history is not persisted by the gateway.
 
-```json
-{"type":"chat","message_id":"msg-001","text":"سلام RAVA"}
-```
+## Hosting
 
-The current development response is:
-
-```json
-{"type":"chat_response","message_id":"msg-001","text":"پیام دریافت شد؛ اتصال زنده است."}
-```
-
-This acknowledgement proves transport only; it is not an AI-generated answer.
-
-## Camera upload
-
-Send a JPEG body to `POST /api/camera` with:
-
-```
-Authorization: Bearer YOUR_DEVICE_TOKEN
-Content-Type: image/jpeg
-```
-
-The current phase responds with HTTP 202 and the received byte count. It does not store the image.
-
-## Render
-
-Create a Node web service from this repository and branch:
+For Render, create a Node web service from this repository and select:
 
 - Root directory: `backend`
-- Build command: `npm install`
+- Build command: `npm install --no-audit --no-fund`
 - Start command: `npm start`
 - Health check path: `/health`
-- Environment variable: `RAVA_DEVICE_TOKEN` (set a unique random secret in Render; do not commit it)
 
-The service binds to Render's `PORT` and listens on `0.0.0.0`.
+Configure all required secrets in the host dashboard. This documentation does not imply that a service has been deployed or that live provider credentials have been configured.
 
-## Scope boundaries
+## Current integration boundary
 
-This phase does not change the ESP32 camera firmware, implement AI-provider calls, expose a mobile app, store images, or enable motor commands. Those are separate stages after this transport layer is verified.
+The backend voice pipeline exists, but the ESP32 firmware still needs a tested WAV capture/upload/playback client and the Android app still needs the Push-to-Talk control flow. Do not flash a new firmware image until those changes build and the audio format has been verified with the actual microphone.
