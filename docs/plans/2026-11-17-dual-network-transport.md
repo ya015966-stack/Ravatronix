@@ -207,7 +207,7 @@ Expected: focused tests fail because the AT modem adapter does not exist.
 
 - [ ] **Step 3: Implement AT service and HTTP adapter**
 
-Use SIMCom A76XX documented HTTP(S) command sequence only after validating the installed A7670E firmware revision. Support `HTTPINIT`, `HTTPPARA` URL/content/custom headers/SSL context, `HTTPDATA` binary upload, `HTTPACTION` POST, `HTTPHEAD`, and bounded `HTTPREAD` response retrieval only where confirmed in the actual modem manual/revision. Configure SSL context with certificate validation; if modem certificate validation cannot be configured and verified, keep HTTPS adapter disabled. Do not print AT command arguments that contain credentials. Never fall back to PPP.
+Use SIMCom A76XX documented HTTP(S) command sequence only after validating the installed A7670E firmware revision. Prefer file-based transfer when supported: `CFTRANRX` transfers request WAV to modem EFS, `HTTPPOSTFILE` sends it over HTTPS, `HTTPREADFILE` stores the response, and `CFTRANTX` transfers response bytes back to ESP32. Probe each command and verify the firmware's file-size and transfer-pacing behavior. The documented direct `HTTPDATA` upload ceiling is 153,600 bytes; ordinary HTTP response buffering has a documented 64 KiB stack/cache constraint, so use direct `HTTPDATA`/`HTTPREAD` only when both payloads fit measured limits. Configure SSL server authentication (root CA), SNI and modem time validation; if root CA validation cannot be configured and verified, keep HTTPS adapter disabled. Do not print AT command arguments that contain credentials. Never fall back to PPP.
 
 - [ ] **Step 4: Verify focused pass**
 
