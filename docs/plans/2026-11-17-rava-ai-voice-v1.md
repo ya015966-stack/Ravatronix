@@ -57,10 +57,11 @@
 
 - [x] Test unauthenticated requests, malformed WAV, provider unavailability/failure, and a successful injected STT→AI→TTS round trip.
 - [x] Observe the missing voice route returning 404 before implementation.
-- [ ] Select and implement a production speech-provider adapter behind the tested STT/TTS interfaces; never forward raw audio to the chat provider.
+- [x] Select Azure Speech as the initial STT/TTS adapter and implement Persian `fa-IR` short-audio recognition plus neural WAV synthesis behind the tested interfaces; never forward raw audio to the chat provider.
+- [x] Add server-only `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_LOCALE`, and `AZURE_SPEECH_VOICE` configuration; provider remains unavailable until key and region are set.
 - [x] Return clear 4xx/5xx errors for invalid WAV and provider failures; do not return partial audio.
-- [x] Verify backend CI workflow: 17 tests passed, 0 failed.
-- [x] Commit the tested voice orchestration on the feature branch.
+- [x] Verify backend CI workflow after Azure adapter: 22 tests passed, 0 failed.
+- [x] Commit the tested voice orchestration and Azure adapter on the feature branch.
 
 ### Task 3: Integrate the existing ESP32 voice transport
 
@@ -81,7 +82,7 @@
 
 ## Unresolved product decisions
 
-- The production STT and TTS vendor/model, region, pricing, and data-retention terms must be selected after comparing Persian quality and availability. The implementation should keep these adapters configurable and must not assume a paid provider is approved.
+- Azure Speech is the initial STT/TTS implementation (`fa-IR`, `fa-IR-DilaraNeural`). A real Speech resource region, pricing review, data-retention review, and live Persian quality check remain pending before sending real audio.
 - The exact WAV byte layout produced by the currently working microphone firmware must be verified from an actual capture before enabling the voice endpoint on the live robot.
 - Automatic Wi-Fi↔4G failover behavior is owned by the existing network layer; this feature must use the currently active connection and must not change modem routing until its behavior is verified.
 
@@ -89,7 +90,8 @@
 ## Implementation progress (2026-11-17)
 
 - Task 1 implemented on this branch: authenticated `POST /api/ai/chat`, injectable AI provider, and configurable OpenAI-compatible chat adapter.
-- Task 2 orchestration implemented: authenticated raw WAV endpoint, WAV format/duration checks, STT→AI→TTS provider interface, and no-partial-audio failure behavior. Production STT/TTS adapters and firmware transport are not yet implemented.
-- Backend CI run `44066141533` completed successfully with 17 tests passing and 0 failures.
-- Production speech-provider adapter is intentionally not configured yet. Provider/model selection is an explicit decision because the currently documented OpenAI Speech API TTS models are scheduled for shutdown on 2027-01-06; a new integration needs a supported replacement path or another provider.
+- Task 2 orchestration implemented: authenticated raw WAV endpoint, WAV format/duration checks, STT→AI→TTS provider interface, and no-partial-audio failure behavior.
+- Azure Speech adapter added: Persian `fa-IR` short-audio recognition and `fa-IR-DilaraNeural` synthesis returning 16 kHz PCM WAV. Server reads credentials only from environment variables.
+- Azure adapter tests observed the expected red state (missing module) before implementation. CI run `44066720300` failed at that expected missing-module point; after implementation, CI run `44066740245` passed, and the final integration/configuration run `44066763400` passed with 22 tests and 0 failures.
+- The Azure adapter is implemented but not live-configured: no Speech key/region has been supplied to the hosting environment, so `/api/voice/turn` continues to return provider-unavailable until configuration is completed.
 - No API key has been added, no server has been deployed, and no firmware has been flashed.
