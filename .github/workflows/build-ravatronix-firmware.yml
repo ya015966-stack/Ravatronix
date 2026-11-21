@@ -2,11 +2,6 @@ name: Build Ravatronix integrated ESP-IDF firmware
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "firmware/esp32_s3/**"
-      - ".github/workflows/build-ravatronix-firmware.yml"
-
 permissions:
   contents: read
 
