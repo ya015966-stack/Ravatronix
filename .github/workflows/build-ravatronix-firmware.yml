@@ -2,21 +2,39 @@ name: Build Ravatronix integrated ESP-IDF firmware
 
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feat/firmware-integration
+
+      # Host contract tests run on the GitHub runner, not inside the ESP-IDF
+      # Docker container. This isolates native compiler/sanitizer memory use.
+      - name: Run host contract tests (isolated runner)
+        id: host-tests
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: firmware/esp32_s3
+        run: |
+          set -o pipefail
+          {
+            set -euo pipefail
+            python3 -m venv .ci-venv
+            .ci-venv/bin/python -m pip install --upgrade pip pytest
+            for test_file in tests/host/test_*.py; do
+              echo "=== Host test: ${test_file} ==="
+              timeout 60s .ci-venv/bin/python -m pytest "${test_file}" -q
+            done
+            echo "HOST_TEST_RESULT=SUCCESS"
+          } 2>&1 | tee host-test-report.log
 
       - name: Build ESP-IDF firmware (capture full report)
         id: build
+        if: steps.host-tests.outcome == 'success'
         continue-on-error: true
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -31,9 +49,15 @@ jobs:
               echo "ESP-IDF: v5.3.2"
               echo "Target: esp32s3"
               echo "Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-              python -m pip install pytest
-              python -m pytest tests/host -q
               idf.py reconfigure
+              echo "=== Effective RAVA configuration ==="
+              grep "^CONFIG_RAVA_ENABLE_CAMERA=y$" sdkconfig
+              grep "^CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y$" sdkconfig
+              grep "^# CONFIG_RAVA_ENABLE_AUDIO is not set$" sdkconfig
+              ! grep -q "^CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=y$" sdkconfig
+              ! grep -q "^CONFIG_RAVA_MIC_FORMAT_CONFIRMED=y$" sdkconfig
+              grep "^# CONFIG_RAVA_ENABLE_CELLULAR is not set$" sdkconfig
+              ! grep -q "unknown kconfig symbol" build-report.log
               idf.py build
               python -m esptool --chip esp32s3 merge_bin -o build/Ravatronix_ESP32S3_N16R8.bin -f raw --flash_mode dio --flash_freq 40m --flash_size 16MB 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/ravatronix_firmware.bin
               test -s build/Ravatronix_ESP32S3_N16R8.bin
@@ -41,17 +65,19 @@ jobs:
               echo "Finished: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             } 2>&1 | tee build-report.log
 
-      - name: Upload build report (kept even when build fails)
+      - name: Upload test and build reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Ravatronix-build-report
-          path: firmware/esp32_s3/build-report.log
+          name: Ravatronix-ci-reports
+          path: |
+            firmware/esp32_s3/host-test-report.log
+            firmware/esp32_s3/build-report.log
           if-no-files-found: warn
           retention-days: 14
 
       - name: Upload firmware binary
-        if: steps.build.outcome == 'success'
+        if: steps.host-tests.outcome == 'success' && steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: Ravatronix-ESP32S3-N16R8-Integrated
@@ -59,8 +85,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Mark workflow failed when build failed
-        if: steps.build.outcome == 'failure'
+      - name: Mark workflow failed when tests or build failed
+        if: always() && (steps.host-tests.outcome == 'failure' || steps.build.outcome == 'failure')
         run: |
-          echo "Firmware build failed. Download the Ravatronix-build-report artifact."
+          echo "Host tests or ESP-IDF firmware build failed. Download Ravatronix-ci-reports."
           exit 1

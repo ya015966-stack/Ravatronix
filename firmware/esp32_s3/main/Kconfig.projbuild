@@ -1,0 +1,54 @@
+menu "Ravatronix firmware"
+    config RAVA_ENABLE_CAMERA
+        bool "Enable OV3660 camera service"
+        default n
+        help
+            Enables camera capture only after its GPIO map is verified.
+    config RAVA_CAMERA_PINMAP_CONFIRMED
+        bool "OV3660 GPIO map verified for this board"
+        depends on RAVA_ENABLE_CAMERA
+        default n
+    config RAVA_ENABLE_AUDIO
+        bool "Enable I2S microphone and speaker"
+        default n
+    config RAVA_AUDIO_WIRING_CONFIRMED
+        bool "I2S wiring verified"
+        depends on RAVA_ENABLE_AUDIO
+        default n
+    config RAVA_MIC_FORMAT_CONFIRMED
+        bool "Microphone model and I2S format verified"
+        depends on RAVA_ENABLE_AUDIO
+        default n
+    config RAVA_ENABLE_CELLULAR
+        bool "Enable A7670E cellular diagnostics"
+        default n
+        help
+            Enables only the gated AT diagnostic service. HTTPS transport is
+            a separate milestone and remains unavailable until modem firmware
+            capabilities and TLS behavior are verified.
+    config RAVA_MODEM_ELECTRICAL_CONFIRMED
+        bool "A7670E carrier power and UART levels verified"
+        depends on RAVA_ENABLE_CELLULAR
+        default n
+    config RAVA_MODEM_AT_UART_CONFIRMED
+        bool "A7670E UART wiring and logic levels verified"
+        depends on RAVA_MODEM_ELECTRICAL_CONFIRMED
+        default n
+    config RAVA_MODEM_APN
+        string "Cellular APN (reserved; AT diagnostic does not use it)"
+        default ""
+        help
+            Leave blank until the SIM operator and APN are confirmed.
+            Never put SIM PINs or private credentials here.
+    config RAVA_BACKEND_URL
+        string "Backend HTTPS endpoint"
+        default ""
+        help
+            Optional HTTPS endpoint. Authentication token is supplied at runtime.
+    config RAVA_WIFI_LOG_SETUP_SECRET
+        bool "Print temporary Wi-Fi setup passphrase to serial logs (debug only)"
+        default n
+        help
+            Avoid enabling this in normal builds. Serial logs can be shared;
+            the temporary provisioning passphrase is a credential.
+endmenu
