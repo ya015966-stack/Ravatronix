@@ -22,6 +22,8 @@ def test_kconfig_safety_gates_default_to_closed():
         "RAVA_MIC_FORMAT_CONFIRMED",
         "RAVA_ENABLE_CELLULAR",
         "RAVA_MODEM_ELECTRICAL_CONFIRMED",
+        "RAVA_MODEM_AT_UART_CONFIRMED",
+        "RAVA_WIFI_LOG_SETUP_SECRET",
     ):
         block = re.search(
             rf"config {option}\b(.*?)(?=\n\s*config |\nendmenu)",
@@ -47,6 +49,7 @@ def test_camera_remains_enabled_but_unverified_audio_and_cellular_stay_gated():
     assert "CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=n" in defaults
     assert "CONFIG_RAVA_MIC_FORMAT_CONFIRMED=n" in defaults
     assert "CONFIG_RAVA_ENABLE_CELLULAR=n" in defaults
+    assert "CONFIG_LWIP_PPP_SUPPORT=y" not in defaults
 
 
 def test_ci_checks_disabled_audio_without_requiring_hidden_dependent_symbols():
@@ -64,5 +67,12 @@ def test_managed_dependencies_are_declared_in_their_component_manifests():
     network_manifest = (ROOT / "components" / "network_service" / "idf_component.yml").read_text()
     assert 'idf: ">=5.3.2,<5.4.0"' in main_manifest
     assert 'espressif/esp32-camera: "2.1.9"' in camera_manifest
-    assert 'espressif/esp_modem: "1.4.0"' in network_manifest
+    assert 'espressif/esp_modem: "1.4.0"' not in network_manifest
     assert not (ROOT / "idf_component.yml").exists()
+
+
+def test_firmware_build_workflows_are_manual_only():
+    for workflow_name in ("build-ravatronix-firmware.yml", "build-ravatronix-idf.yml"):
+        workflow = (ROOT.parents[1] / ".github" / "workflows" / workflow_name).read_text()
+        assert "workflow_dispatch:" in workflow
+        assert "\n  push:" not in workflow
