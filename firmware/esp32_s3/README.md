@@ -26,3 +26,23 @@ Use Arduino IDE-compatible tooling or PlatformIO. On Android, browser-based comp
 
 ## Current status
 No new firmware is assumed to be installed. GPIO mapping, camera detection, modem wiring, and successful compilation are **not yet verified**.
+
+## Legacy OV3660 camera AP — credential handling
+
+The legacy Arduino sketch is a bench-only local camera sample. It requires a
+local, untracked `camera_secrets.h` beside `camera_wifi_ap.ino`. Define
+`RAVA_CAMERA_AP_PASSWORD` there as a unique random ASCII passphrase of 16–63
+characters using letters, digits, hyphens, or underscores. Never paste the
+credential into the sketch, commit it, or print it to Serial.
+
+The AP is WPA2-protected and runs in AP-only mode. The HTTP endpoints rely on
+membership of this isolated AP network; this is network-level access control,
+not per-user HTTP authentication. Do not bridge this AP to another network or
+share its passphrase with untrusted devices. The wildcard CORS response header
+has been removed.
+
+For GitHub Actions builds, store the passphrase as the repository Actions secret
+`RAVA_CAMERA_AP_PASSWORD`. The workflow will skip binary compilation when the
+secret is absent or invalid, while still running the source security tests.
+The resulting firmware embeds the passphrase: keep its artifact private and do
+not distribute it as a public binary.
