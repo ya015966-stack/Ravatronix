@@ -16,6 +16,8 @@ def test_modem_startup_is_at_diagnostic_only_and_hardware_gated():
     assert 'send_command("ATE0\\r\\n"' in source
     assert 'send_command("AT+GMR\\r\\n"' in source
     assert "MODEM_COMMAND_TIMEOUT_MS" in source
+    assert "modem_at_service_get_firmware_info" in source
+    assert "modem_at_service_get_firmware_info" in header
     assert "UART diagnostics only" in header
     assert "config RAVA_MODEM_AT_UART_CONFIRMED" in kconfig
     assert "ESP_MODEM_MODE_DATA" not in app
