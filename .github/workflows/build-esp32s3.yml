@@ -34,17 +34,17 @@ jobs:
           password = os.environ.get("RAVA_CAMERA_AP_PASSWORD", "")
           output = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           if not password:
-              output.write_text("build_ready=false\\n", encoding="utf-8")
+              output.write_text("build_ready=false\n", encoding="utf-8")
               print("No RAVA_CAMERA_AP_PASSWORD Actions secret; firmware compilation is safely skipped.")
           elif not re.fullmatch(r"[A-Za-z0-9_-]{16,63}", password):
               raise SystemExit("RAVA_CAMERA_AP_PASSWORD must be 16-63 ASCII letters, digits, hyphens, or underscores.")
           else:
               header = pathlib.Path("firmware/esp32_s3/camera_wifi_ap/camera_secrets.h")
               header.write_text(
-                  '#pragma once\\n#define RAVA_CAMERA_AP_PASSWORD "' + password + '"\\n',
+                  '#pragma once\n#define RAVA_CAMERA_AP_PASSWORD "' + password + '"\n',
                   encoding="utf-8",
               )
-              output.write_text("build_ready=true\\n", encoding="utf-8")
+              output.write_text("build_ready=true\n", encoding="utf-8")
           PY
 
       - name: Set up Arduino CLI
