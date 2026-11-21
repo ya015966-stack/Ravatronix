@@ -16,6 +16,8 @@ static const char *AP_SSID = "Ravatronix-Camera";
 static constexpr char AP_PASSWORD[] = RAVA_CAMERA_AP_PASSWORD;
 static_assert(sizeof(AP_PASSWORD) - 1 >= 16,
               "RAVA_CAMERA_AP_PASSWORD must contain at least 16 characters.");
+static_assert(sizeof(AP_PASSWORD) - 1 <= 63,
+              "RAVA_CAMERA_AP_PASSWORD must contain no more than 63 characters.");
 
 #define PWDN_GPIO_NUM  -1
 #define RESET_GPIO_NUM -1
