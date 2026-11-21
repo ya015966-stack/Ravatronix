@@ -58,9 +58,9 @@ jobs:
               echo "=== Effective RAVA configuration ==="
               grep "^CONFIG_RAVA_ENABLE_CAMERA=y$" sdkconfig
               grep "^CONFIG_RAVA_CAMERA_PINMAP_CONFIRMED=y$" sdkconfig
-              grep "^CONFIG_RAVA_ENABLE_AUDIO=y$" sdkconfig
-              grep "^CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=y$" sdkconfig
-              grep "^CONFIG_RAVA_MIC_FORMAT_CONFIRMED=y$" sdkconfig
+              grep "^# CONFIG_RAVA_ENABLE_AUDIO is not set$" sdkconfig
+              grep "^# CONFIG_RAVA_AUDIO_WIRING_CONFIRMED is not set$" sdkconfig
+              grep "^# CONFIG_RAVA_MIC_FORMAT_CONFIRMED is not set$" sdkconfig
               grep "^# CONFIG_RAVA_ENABLE_CELLULAR is not set$" sdkconfig
               ! grep -q "unknown kconfig symbol" build-report.log
               idf.py build
