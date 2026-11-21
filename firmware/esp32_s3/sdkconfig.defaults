@@ -9,7 +9,6 @@ CONFIG_SPIRAM_RODATA=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y
-CONFIG_LWIP_PPP_SUPPORT=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 # Camera uses the previously verified pin map. Audio and cellular stay disabled until their hardware checks are confirmed.
 CONFIG_RAVA_ENABLE_CAMERA=y
