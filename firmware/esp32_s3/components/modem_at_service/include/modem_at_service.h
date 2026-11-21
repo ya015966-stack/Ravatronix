@@ -14,6 +14,7 @@ extern "C" {
  */
 esp_err_t modem_at_service_start(void);
 bool modem_at_service_is_ready(void);
+const char *modem_at_service_get_firmware_info(void);
 
 #ifdef __cplusplus
 }
