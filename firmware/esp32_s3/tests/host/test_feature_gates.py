@@ -49,6 +49,15 @@ def test_camera_remains_enabled_but_unverified_audio_and_cellular_stay_gated():
     assert "CONFIG_RAVA_ENABLE_CELLULAR=n" in defaults
 
 
+def test_ci_checks_disabled_audio_without_requiring_hidden_dependent_symbols():
+    workflow = (ROOT.parents[1] / ".github" / "workflows" / "build-ravatronix-firmware.yml").read_text()
+    assert 'grep "^# CONFIG_RAVA_ENABLE_AUDIO is not set$" sdkconfig' in workflow
+    assert '! grep -q "^CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=y$" sdkconfig' in workflow
+    assert '! grep -q "^CONFIG_RAVA_MIC_FORMAT_CONFIRMED=y$" sdkconfig' in workflow
+    assert 'grep "^CONFIG_RAVA_AUDIO_WIRING_CONFIRMED=y$" sdkconfig' not in workflow
+    assert 'grep "^CONFIG_RAVA_MIC_FORMAT_CONFIRMED=y$" sdkconfig' not in workflow
+
+
 def test_managed_dependencies_are_declared_in_their_component_manifests():
     main_manifest = (ROOT / "main" / "idf_component.yml").read_text()
     camera_manifest = (ROOT / "components" / "camera_service" / "idf_component.yml").read_text()
