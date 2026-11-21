@@ -32,7 +32,7 @@ class LegacyCameraSecurityContractTests(unittest.TestCase):
     def test_ap_password_has_a_maximum_wpa2_length(self):
         self.assertRegex(
             self.source,
-            r"static_assert\\s*\\(\\s*sizeof\\(AP_PASSWORD\\)\\s*-\\s*1\\s*<=\\s*63",
+            r"static_assert\s*\(\s*sizeof\(AP_PASSWORD\)\s*-\s*1\s*<=\s*63",
         )
 
     def test_ap_password_is_never_written_to_serial_logs(self):
