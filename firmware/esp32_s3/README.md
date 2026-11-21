@@ -42,7 +42,8 @@ share its passphrase with untrusted devices. The wildcard CORS response header
 has been removed.
 
 For GitHub Actions builds, store the passphrase as the repository Actions secret
-`RAVA_CAMERA_AP_PASSWORD`. The workflow will skip binary compilation when the
-secret is absent or invalid, while still running the source security tests.
+`RAVA_CAMERA_AP_PASSWORD`. The workflow skips binary compilation when the
+secret is absent and fails validation if it is malformed, while still running
+the source security tests.
 The resulting firmware embeds the passphrase: keep its artifact private and do
 not distribute it as a public binary.
