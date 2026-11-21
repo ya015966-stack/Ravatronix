@@ -4,6 +4,7 @@
 #include "board_config.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "driver/uart.h"
@@ -13,13 +14,18 @@
 
 #define TAG "rava_modem_at"
 #define MODEM_COMMAND_TIMEOUT_MS 2500U
+#define MODEM_FIRMWARE_INFO_CAPACITY 96U
 
 static bool s_uart_installed;
 static bool s_ready;
+static char s_firmware_info[MODEM_FIRMWARE_INFO_CAPACITY];
 
-static esp_err_t send_command(const char *command, uint32_t timeout_ms)
+static esp_err_t send_command(const char *command, uint32_t timeout_ms,
+                              char *info_out, size_t info_capacity)
 {
     if (command == NULL || !s_uart_installed) return ESP_ERR_INVALID_STATE;
+    if (info_out != NULL && info_capacity == 0U) return ESP_ERR_INVALID_ARG;
+    if (info_out != NULL) info_out[0] = '\0';
 
     (void)uart_flush_input(RAVA_MODEM_UART_NUM);
     int written = uart_write_bytes(RAVA_MODEM_UART_NUM, command, strlen(command));
@@ -46,6 +52,14 @@ static esp_err_t send_command(const char *command, uint32_t timeout_ms)
             if (strcmp(line, "OK") == 0) return ESP_OK;
             if (strcmp(line, "ERROR") == 0 || strncmp(line, "+CME ERROR:", 11U) == 0 ||
                 strncmp(line, "+CMS ERROR:", 11U) == 0) return ESP_FAIL;
+            if (info_out != NULL && line[0] != '\0' && line[0] != '+') {
+                size_t used = strlen(info_out);
+                int added = snprintf(info_out + used, info_capacity - used,
+                                     "%s%s", used == 0U ? "" : " ", line);
+                if (added < 0 || (size_t)added >= info_capacity - used) {
+                    return ESP_ERR_INVALID_SIZE;
+                }
+            }
         }
     }
     return ESP_ERR_TIMEOUT;
@@ -80,14 +94,18 @@ esp_err_t modem_at_service_start(void)
         err = uart_set_pin(RAVA_MODEM_UART_NUM, RAVA_MODEM_TX, RAVA_MODEM_RX,
                            UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     }
-    if (err == ESP_OK) err = send_command("AT\r\n", MODEM_COMMAND_TIMEOUT_MS);
-    if (err == ESP_OK) err = send_command("ATE0\r\n", MODEM_COMMAND_TIMEOUT_MS);
-    if (err == ESP_OK) err = send_command("AT+GMR\r\n", MODEM_COMMAND_TIMEOUT_MS);
+    if (err == ESP_OK) err = send_command("AT\r\n", MODEM_COMMAND_TIMEOUT_MS, NULL, 0U);
+    if (err == ESP_OK) err = send_command("ATE0\r\n", MODEM_COMMAND_TIMEOUT_MS, NULL, 0U);
+    if (err == ESP_OK) {
+        err = send_command("AT+GMR\r\n", MODEM_COMMAND_TIMEOUT_MS,
+                           s_firmware_info, sizeof(s_firmware_info));
+    }
 
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "A7670E did not complete bounded AT diagnostics: %s", esp_err_to_name(err));
         (void)uart_driver_delete(RAVA_MODEM_UART_NUM);
         s_uart_installed = false;
+        s_firmware_info[0] = '\0';
         return err;
     }
 
@@ -100,4 +118,9 @@ esp_err_t modem_at_service_start(void)
 bool modem_at_service_is_ready(void)
 {
     return s_ready;
+}
+
+const char *modem_at_service_get_firmware_info(void)
+{
+    return s_firmware_info;
 }
