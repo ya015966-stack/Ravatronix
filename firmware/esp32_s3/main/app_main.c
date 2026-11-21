@@ -16,8 +16,8 @@
 #include "audio_service.h"
 #endif
 
-#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED
-#include "network_service.h"
+#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED && CONFIG_RAVA_MODEM_AT_UART_CONFIRMED
+#include "modem_at_service.h"
 #endif
 
 static const char *TAG = "ravatronix";
@@ -79,23 +79,29 @@ void app_main(void)
         ESP_LOGW(TAG, "Wi-Fi service unavailable: %s", esp_err_to_name(wifi_err));
     }
 
-#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED
-    esp_err_t net_err = network_service_start();
-    if (net_err != ESP_OK) {
-        ESP_LOGE(TAG, "cellular network startup failed: %s", esp_err_to_name(net_err));
+#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED && CONFIG_RAVA_MODEM_AT_UART_CONFIRMED
+    esp_err_t modem_err = modem_at_service_start();
+    if (modem_err != ESP_OK) {
+        ESP_LOGW(TAG, "A7670E AT diagnostic unavailable: %s", esp_err_to_name(modem_err));
     }
 #elif CONFIG_RAVA_ENABLE_CELLULAR
-    ESP_LOGW(TAG, "cellular requested but carrier power/UART electrical gate is closed");
+    ESP_LOGW(TAG, "A7670E AT diagnostic requested but electrical/UART confirmation gates are closed");
 #else
-    ESP_LOGI(TAG, "A7670E AT service remains gated pending UART and modem capability verification");
+    ESP_LOGI(TAG, "A7670E AT diagnostic disabled by default; no PPP data mode is used");
 #endif
 
     while (1) {
-        ESP_LOGI(TAG, "heartbeat heap=%u psram_free=%u wifi_state=%d wifi_ready=%d",
+        ESP_LOGI(TAG, "heartbeat heap=%u psram_free=%u wifi_state=%d wifi_ready=%d modem_at_ready=%d",
                  (unsigned)esp_get_free_heap_size(),
                  (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
                  (int)wifi_service_get_state(),
-                 (int)wifi_service_is_ready());
+                 (int)wifi_service_is_ready(),
+#if CONFIG_RAVA_ENABLE_CELLULAR && CONFIG_RAVA_MODEM_ELECTRICAL_CONFIRMED && CONFIG_RAVA_MODEM_AT_UART_CONFIRMED
+                 (int)modem_at_service_is_ready()
+#else
+                 0
+#endif
+        );
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
