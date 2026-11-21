@@ -234,8 +234,12 @@ static esp_err_t start_provisioning(void)
             (void)esp_wifi_stop();
             return ESP_ERR_NO_MEM;
         }
+#if CONFIG_RAVA_WIFI_LOG_SETUP_SECRET
         ESP_LOGW(TAG, "temporary setup AP: RAVA-SETUP; passphrase: %s; open http://192.168.4.1",
                  setup_password);
+#else
+        ESP_LOGW(TAG, "temporary setup AP active; passphrase logging is disabled; open http://192.168.4.1");
+#endif
     }
     return err;
 }
