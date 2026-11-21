@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "firmware/esp32_s3/camera_wifi_ap/camera_wifi_ap.ino"
+      - "firmware/esp32_s3/tests/host/test_legacy_camera_security.py"
       - ".github/workflows/build-esp32s3.yml"
 
 permissions:
@@ -16,6 +17,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Run camera security contract tests
+        run: python3 -m unittest discover -s firmware/esp32_s3/tests/host -p 'test_*.py' -v
 
       - name: Set up Arduino CLI
         uses: arduino/setup-arduino-cli@v2
