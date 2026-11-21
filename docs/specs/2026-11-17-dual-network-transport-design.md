@@ -196,3 +196,12 @@ These are hardware/firmware facts to establish during staged verification, not r
 - Confirmation that ESP32 GPIO48/47 are the physically connected modem UART pins and that signal levels/power are correct.
 - Whether the installed modem firmware can carry the current maximum WAV request and response sizes while preserving binary bytes and TLS verification.
 - Final Wi-Fi provisioning UX integration with the Android app; initial SoftAP provisioning is the standalone firmware fallback.
+
+
+## Implementation update — 2026-11-21
+
+The integrated firmware candidate now retires the previous PPP startup path. The application calls a new, explicitly gated A7670E UART diagnostic service that sends only AT, ATE0, and AT+GMR with bounded timeouts. Its READY state means only that AT command communication responded; it does not imply SIM registration, packet data, HTTPS capability, or gateway reachability.
+
+The default build keeps cellular and the modem UART confirmation gates closed. PPP support is removed from sdkconfig defaults and the unused esp_modem dependency is removed from the legacy network-service manifest. The Wi-Fi setup AP passphrase is no longer printed in ordinary builds; serial disclosure requires a separate debug-only Kconfig option, disabled by default. Firmware Actions workflows are manual-dispatch only to avoid consuming quota on routine pushes.
+
+Still pending: inspect the actual modem firmware identity on hardware, capability-probe its native HTTPS/file-transfer and certificate-validation behavior, implement the binary-safe AT HTTP(S) adapter, add gateway health probes, and connect both adapters to the network manager and voice transport. The current AT diagnostic is deliberately not described as a dual-network implementation.
