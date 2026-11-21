@@ -34,3 +34,6 @@ local.properties
 .DS_Store
 Thumbs.db
 *.swp
+
+# Per-device camera credentials (never commit)
+firmware/esp32_s3/camera_wifi_ap/camera_secrets.h

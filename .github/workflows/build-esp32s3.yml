@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "firmware/esp32_s3/camera_wifi_ap/camera_wifi_ap.ino"
+      - "firmware/esp32_s3/tests/host/test_legacy_camera_security.py"
       - ".github/workflows/build-esp32s3.yml"
 
 permissions:
@@ -17,18 +18,51 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Run camera security contract tests
+        run: python3 -m unittest discover -s firmware/esp32_s3/tests/host -p 'test_*.py' -v
+
+      - name: Prepare local camera credentials
+        id: camera_credentials
+        env:
+          RAVA_CAMERA_AP_PASSWORD: ${{ secrets.RAVA_CAMERA_AP_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import re
+
+          password = os.environ.get("RAVA_CAMERA_AP_PASSWORD", "")
+          output = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          if not password:
+              output.write_text("build_ready=false\n", encoding="utf-8")
+              print("No RAVA_CAMERA_AP_PASSWORD Actions secret; firmware compilation is safely skipped.")
+          elif not re.fullmatch(r"[A-Za-z0-9_-]{16,63}", password):
+              raise SystemExit("RAVA_CAMERA_AP_PASSWORD must be 16-63 ASCII letters, digits, hyphens, or underscores.")
+          else:
+              header = pathlib.Path("firmware/esp32_s3/camera_wifi_ap/camera_secrets.h")
+              header.write_text(
+                  '#pragma once\n#define RAVA_CAMERA_AP_PASSWORD "' + password + '"\n',
+                  encoding="utf-8",
+              )
+              output.write_text("build_ready=true\n", encoding="utf-8")
+          PY
+
       - name: Set up Arduino CLI
+        if: steps.camera_credentials.outputs.build_ready == 'true'
         uses: arduino/setup-arduino-cli@v2
 
       - name: Configure Arduino CLI
+        if: steps.camera_credentials.outputs.build_ready == 'true'
         run: arduino-cli config init
 
       - name: Install ESP32 Arduino core
+        if: steps.camera_credentials.outputs.build_ready == 'true'
         run: |
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
       - name: Compile OV3660 camera and Wi-Fi firmware for ESP32-S3 N16R8
+        if: steps.camera_credentials.outputs.build_ready == 'true'
         run: |
           mkdir -p build
           arduino-cli compile \
@@ -41,6 +75,7 @@ jobs:
           stat -c '%n %s bytes' build/Ravatronix_ESP32S3_N16R8_OV3660_WIFI_merged.bin
 
       - name: Upload camera firmware artifact
+        if: steps.camera_credentials.outputs.build_ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Ravatronix-ESP32S3-N16R8-OV3660-WiFi
