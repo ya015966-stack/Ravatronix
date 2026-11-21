@@ -83,6 +83,8 @@ void app_main(void)
     esp_err_t modem_err = modem_at_service_start();
     if (modem_err != ESP_OK) {
         ESP_LOGW(TAG, "A7670E AT diagnostic unavailable: %s", esp_err_to_name(modem_err));
+    } else if (modem_at_service_get_firmware_info()[0] != '\0') {
+        ESP_LOGI(TAG, "A7670E firmware identity: %s", modem_at_service_get_firmware_info());
     }
 #elif CONFIG_RAVA_ENABLE_CELLULAR
     ESP_LOGW(TAG, "A7670E AT diagnostic requested but electrical/UART confirmation gates are closed");
