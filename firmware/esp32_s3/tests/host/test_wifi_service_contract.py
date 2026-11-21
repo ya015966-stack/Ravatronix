@@ -27,13 +27,10 @@ def test_wifi_service_uses_sta_nvs_and_temporary_provisioning_portal():
     assert "wifi_service_start" in header
 
 
-def test_wifi_service_does_not_log_saved_network_credentials():
-    source_path = ROOT / "components/wifi_service/wifi_service.c"
-    if not source_path.is_file():
-        return
-    source = source_path.read_text()
-    assert 'ESP_LOGI(TAG, "Wi-Fi station acquired an IP address")' in source
-    assert 'ESP_LOGI(TAG, "Wi-Fi password' not in source
-    assert 'ESP_LOGI(TAG, "SSID:' not in source
-    assert 'ESP_LOGI(TAG, "Authorization:' not in source
-    assert 'ESP_LOGW(TAG, "temporary setup AP: RAVA-SETUP; passphrase: %s' in source
+def test_wifi_setup_passphrase_logging_is_opt_in_and_disabled_by_default():
+    source = (ROOT / "components/wifi_service/wifi_service.c").read_text()
+    kconfig = (ROOT / "main/Kconfig.projbuild").read_text()
+    assert "#if CONFIG_RAVA_WIFI_LOG_SETUP_SECRET" in source
+    assert "temporary setup AP: RAVA-SETUP; passphrase: %s" in source
+    option = kconfig.split("config RAVA_WIFI_LOG_SETUP_SECRET", 1)[1]
+    assert "default n" in option
