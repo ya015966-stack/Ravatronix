@@ -2,13 +2,20 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 #include "esp_http_server.h"
+#include "camera_secrets.h"
 
 // Ravatronix ESP32-S3-N16R8 + OV3660
 // Reported FFC pin map: matches Espressif CAMERA_MODEL_ESP32S3_EYE.
 // Verify against the exact board schematic before treating the pin map as hardware-confirmed.
 
+#ifndef RAVA_CAMERA_AP_PASSWORD
+#error "Create camera_secrets.h with a unique RAVA_CAMERA_AP_PASSWORD before building."
+#endif
+
 static const char *AP_SSID = "Ravatronix-Camera";
-static const char *AP_PASSWORD = "RavaCam2026"; // Change before using outside a private test.
+static constexpr char AP_PASSWORD[] = RAVA_CAMERA_AP_PASSWORD;
+static_assert(sizeof(AP_PASSWORD) - 1 >= 16,
+              "RAVA_CAMERA_AP_PASSWORD must contain at least 16 characters.");
 
 #define PWDN_GPIO_NUM  -1
 #define RESET_GPIO_NUM -1
@@ -53,7 +60,6 @@ static esp_err_t capture_handler(httpd_req_t *req) {
 static esp_err_t stream_handler(httpd_req_t *req) {
   esp_err_t result = httpd_resp_set_type(req, "multipart/x-mixed-replace;boundary=ravaframe");
   if (result != ESP_OK) return result;
-  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
   char header[80];
   while (true) {
@@ -160,7 +166,6 @@ void setup() {
   }
 
   Serial.printf("[RAVA] Wi-Fi: %s\n", AP_SSID);
-  Serial.printf("[RAVA] Password: %s\n", AP_PASSWORD);
   Serial.printf("[RAVA] Open http://%s in your phone browser.\n", WiFi.softAPIP());
 
   if (startCameraServer()) {
